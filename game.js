@@ -85,7 +85,7 @@ function chooseRace(character) {
         {
             type: "list",
             name: "characterRace",
-            message: "What race would you like " + characterName + " to be?",
+            message: "What race would you like " + character.name + " to be?",
             choices: characterRaceOptions
         }
     ]).then(function (response) {
@@ -93,53 +93,68 @@ function chooseRace(character) {
         character.race = characterRace
         switch (characterRace) {
             case characterRaceOptions[0]:
-                let characterSubraceOptions = ["Black (Acid)", "Blue (Lightning)", "Brass (Fire)", "Bronze (Lightning)", "Copper (Acid)", "Gold (Fire)", "Green (Poison)", "Red (Fire)", "Silver (Cold)", "White (Cold)"]
-                let messageString = character.race + "s have different colors, which determine which damage type your breath weapon does, and also the damage type you are resistant to. Which color would you like " + character.name + " to be?"
-                chooseSubrace(character, characterSubraceOptions, messageString);
+                let dragonbornArray = ["Black (Acid)", "Blue (Lightning)", "Brass (Fire)", "Bronze (Lightning)", "Copper (Acid)", "Gold (Fire)", "Green (Poison)", "Red (Fire)", "Silver (Cold)", "White (Cold)"]
+                let dragonbornString = character.race + "s have different colors, which determine which damage type your breath weapon does, and also the damage type you are resistant to. Which color would you like " + character.name + " to be?"
+                chooseSubrace(character, dragonbornArray, dragonbornString);
                 break;
             case characterRaceOptions[1]:
-                let characterSubraceOptions = ["Hill", "Mountain"]
-                let messageString = character.race + "s have " + characterSubraceOptions.length + " subraces. Which one would you like " + character.name + " to be?"
-                chooseSubrace(character, characterSubraceOptions, messageString);
+                let dwarfArray = ["Hill", "Mountain"]
+                let dwarfString = character.race + "s have " + dwarfArray.length + " subraces. Which one would you like " + character.name + " to be?"
+                chooseSubrace(character, dwarfArray, dwarfString);
                 break;
             case characterRaceOptions[2]:
-                let characterSubraceOptions = ["High", "Wood", "Drow"]
-                let messageString = character.race + "s have " + characterSubraceOptions.length + " subraces. Which one would you like " + character.name + " to be?"
-                chooseSubrace(character, characterSubraceOptions, messageString);
+                let elfArray = ["High", "Wood", "Drow"]
+                let elfString = character.race + "s have " + elfArray.length + " subraces. Which one would you like " + character.name + " to be?"
+                chooseSubrace(character, elfArray, elfString);
                 break;
             case characterRaceOptions[3]:
-                let characterSubraceOptions = ["Forest", "Rock"]
-                let messageString = character.race + "s have " + characterSubraceOptions.length + " subraces. Which one would you like " + character.name + " to be?"
-                chooseSubrace(character, characterSubraceOptions, messageString);
+                let gnomeArray = ["Forest", "Rock"]
+                let gnomeString = character.race + "s have " + gnomeArray.length + " subraces. Which one would you like " + character.name + " to be?"
+                chooseSubrace(character, gnomeArray, gnomeString);
                 break;
             case characterRaceOptions[4]:
-                let characterSubraceOptions = ["Standard", "High", "Wood", "Drow"]
-                let messageString = character.race + "s have " + characterSubraceOptions.length + " subraces, based on your Elf parentage. Which one would you like " + character.name + " to be?"
-                chooseSubrace(character, characterSubraceOptions, messageString);
+                let halfelfArray = ["Standard", "High", "Wood", "Drow"]
+                let halfelfString = character.race + "s have " + halfelfArray.length + " subraces, based on your Elf parentage. Which one would you like " + character.name + " to be?"
+                chooseSubrace(character, halfelfArray, halfelfString);
                 break;
             case characterRaceOptions[5]:
-                let characterSubraceOptions = ["Lightfoot", "Stout"]
-                let messageString = character.race + "s have " + characterSubraceOptions.length + " subraces. Which one would you like " + character.name + " to be?"
-                chooseSubrace(character, characterSubraceOptions, messageString);
+                let halflingArray = ["Lightfoot", "Stout"]
+                let halflingString = character.race + "s have " + halflingArray.length + " subraces. Which one would you like " + character.name + " to be?"
+                chooseSubrace(character, halflingArray, halflingString);
                 break;
             case characterRaceOptions[6]:
                 obj.subrace = "None"
                 chooseClass(character);
                 break;
             case characterRaceOptions[7]:
-                let characterSubraceOptions = ["Standard", "Variant"]
-                let messageString = character.race + "s have " + characterSubraceOptions.length + " subraces. Which one would you like " + character.name + " to be?"
-                chooseSubrace(character, characterSubraceOptions, messageString);
+                let humanArray = ["Standard", "Variant"]
+                let humanString = character.race + "s have " + humanArray.length + " subraces. Which one would you like " + character.name + " to be?"
+                chooseSubrace(character, humanArray, humanString);
                 break;
             case characterRaceOptions[8]:
-                let characterSubraceOptions = ["Standard", "Feral"]
-                let messageString = character.race + "s have " + characterSubraceOptions.length + " subraces. Which one would you like " + character.name + " to be?"
-                chooseSubrace(character, characterSubraceOptions, messageString);
+                let tieflingArray = ["Standard", "Feral"]
+                let tieflingString = character.race + "s have " + tieflingArray.length + " subraces. Which one would you like " + character.name + " to be?"
+                chooseSubrace(character, tieflingArray, tieflingString);
                 break;
             default:
-                console.log("not possible")
+                console.log("not possible");
         }
     })
+        .catch(function (error) {
+            if (error.response) {
+                console.log("---------------Data---------------");
+                console.log(error.response.data);
+                console.log("---------------Status---------------");
+                console.log(error.response.status);
+                console.log("---------------Status---------------");
+                console.log(error.response.headers);
+            } else if (error.request) {
+                console.log(error.request);
+            } else {
+                console.log("Error", error.message);
+            }
+            console.log(error.config);
+        });
 }
 
 function chooseSubrace(character, characterSubraceOptions, messageString) {
@@ -158,10 +173,153 @@ function chooseSubrace(character, characterSubraceOptions, messageString) {
 }
 
 function chooseClass(character) {
-    
+    const characterClassOptions = ["Barbarian", "Fighter", "Rogue"]
+    inquirer.prompt([
+        {
+            type: "list",
+            name: "characterClass",
+            message: "What class would you like " + character.name + " to be?",
+            choices: characterClassOptions
+        }
+    ]).then(function (response) {
+        const characterClass = response.characterClass
+        character.class = characterClass
+        chooseStats(character)
+    })
 }
 
-// Inquirer 4: Choose character stats
+function chooseStats(character) {
+    new Promise((resolve, reject) => {
+        initializeStats(character, resolve)
+    })
+        .catch(() => {
+        })
+        .then(function (value) {
+            inquirer.prompt([
+                {
+                    type: "list",
+                    name: "statMethod",
+                    message: "Would you like to roll for stats or use the standard array?",
+                    choices: ["Roll for stats!", "Let's just use the standard array"]
+                }
+            ]).then(function(response) {
+                if (response.statMethod === "Roll for stats!") {
+                    rollStats(character)
+                } else {
+                    let standardArray = ["15", "14", "13", "12", "10", "8"]
+                    placeStats(character, standardArray)
+                }
+            })
+        })
+}
+
+function initializeStats(character, resolve) {
+    character.stats = {
+        strength: 0,
+        constitution: 0,
+        dexterity: 0,
+        intelligence: 0,
+        wisdom: 0,
+        charisma: 0
+    }
+    if (character.race === "Dragonborn") {
+        character.stats.strength += 2
+        character.stats.charisma += 1
+    } else if (character.race === "Dwarf") {
+        character.stats.constitution += 2
+        if (character.subrace === "Hill") {
+            character.stats.wisdom += 1
+        } else if (character.subrace === "Mountain") {
+            character.stats.strength += 2
+        }
+    } else if (character.race === "Elf") {
+        character.stats.dexterity += 2
+        if (character.subrace === "High") {
+            character.stats.intelligence += 1
+        } else if (character.subrace === "Wood") {
+            character.stats.wisdom += 1
+        } else if (character.subrace === "Drow") {
+            character.stats.charisma += 1
+        }
+    } else if (character.race === "Gnome") {
+        character.stats.intelligence += 2
+        if (character.subrace === "Forest") {
+            character.stats.dexterity += 1
+        } else if (character.subrace === "Rock") {
+            character.stats.constitution += 1
+        }
+    } else if (character.race === "Half-Elf") {
+        character.stats.charisma += 2
+    } else if (character.race === "Halfling") {
+        character.stats.dexterity += 2
+        if (character.subrace === "Lightfoot") {
+            character.stats.charisma += 1
+        } else if (character.subrace === "Stout") {
+            character.stats.constitution += 1
+        }
+    } else if (character.race === "Half-Orc") {
+        character.stats.strength += 2
+        character.stats.constitution += 1
+    } else if (character.race === "Human") {
+        if (character.subrace === "Standard") {
+            character.stats.strength += 1
+            character.stats.constitution += 1
+            character.stats.dexterity += 1
+            character.stats.intelligence += 1
+            character.stats.wisdom += 1
+            character.stats.charisma += 1
+        }
+    } else if (character.race === "Tiefling") {
+        character.stats.intelligence += 1
+        if (character.subrace === "Standard") {
+            character.stats.charisma += 2
+        } else if (character.subrace === "Feral") {
+            character.stats.dexterity += 2
+        }
+    }
+    resolve(character)
+}
+
+function rollStats(character) {
+    console.log("To roll for stats, we roll a six sided dice four times, drop the lowest roll, and add the rest together. That's one total. You do this process seven times, resulting in seven totals. Then we drop the lowest total, giving you six totals. Those are your stats.")
+    let rolledArray = []
+    for (let i = 0; i < 7; i++) {
+        console.log("------------------------------------------------------------------------")
+        let die1 = Math.floor(Math.random() * 6) + 1
+        let die2 = Math.floor(Math.random() * 6) + 1
+        let die3 = Math.floor(Math.random() * 6) + 1
+        let die4 = Math.floor(Math.random() * 6) + 1
+        let dieArray = [die1, die2, die3, die4]
+        let dieArraySorted = dieArray.sort(function(a, b){return a-b});
+        console.log("Here are your six sided dice rolls: " + dieArraySorted)
+        let total = dieArraySorted[1] + dieArraySorted[2] + dieArraySorted[3]
+        console.log("Dropping the lowest of those rolls and adding together we get the following total: " + total)
+        rolledArray.push(total) 
+    }
+    console.log("------------------------------------------------------------------------")
+    let rolledArraySorted = rolledArray.sort(function(a, b){return a-b})
+    console.log("Your seven totals are: " + rolledArraySorted)
+    let finalArray = [rolledArraySorted[1], rolledArraySorted[2], rolledArraySorted[3], rolledArraySorted[4], rolledArraySorted[5], rolledArraySorted[6]]
+    console.log("By dropping the lowest of those, we now have your stats: " + finalArray)
+    placeStats(character, finalArray)
+}
+
+function placeStats(character, statArray) {
+    console.log(statArray)
+    connection.end()
+}
+
+function humanVariantStats(character) {
+
+}
+
+function halfelfStats(character) {
+
+}
+
+// console.log(character)
+// connection.end()
+
 // Inquirer 5: Choose character weapon
 // just give appropriate armor and proficiencies, etc.
 // connection.end()
