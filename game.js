@@ -202,11 +202,12 @@ function chooseStats(character) {
                     message: "Would you like to roll for stats or use the standard array?",
                     choices: ["Roll for stats!", "Let's just use the standard array"]
                 }
-            ]).then(function(response) {
+            ]).then(function (response) {
                 if (response.statMethod === "Roll for stats!") {
                     rollStats(character)
                 } else {
-                    let standardArray = ["15", "14", "13", "12", "10", "8"]
+                    let standardArray = ["8", "10", "12", "13", "14", "15"]
+                    console.log("By choosing the standard array, you get the following stats: " + standardArray)
                     placeStats(character, standardArray)
                 }
             })
@@ -223,57 +224,74 @@ function initializeStats(character, resolve) {
         charisma: 0
     }
     if (character.race === "Dragonborn") {
+        console.log("Dragonborns get +2 Strength and +1 Charisma")
         character.stats.strength += 2
         character.stats.charisma += 1
     } else if (character.race === "Dwarf") {
         character.stats.constitution += 2
         if (character.subrace === "Hill") {
+            console.log("Hill Dwarves get +2 Constitution and +1 Wisdom")
             character.stats.wisdom += 1
         } else if (character.subrace === "Mountain") {
+            console.log("Mountain Dwarves get +2 Constitution and +2 Strength")
             character.stats.strength += 2
         }
     } else if (character.race === "Elf") {
         character.stats.dexterity += 2
         if (character.subrace === "High") {
+            console.log("High Elves get +2 Dexterity and +1 Intelligence")
             character.stats.intelligence += 1
         } else if (character.subrace === "Wood") {
+            console.log("Wood Elves get +2 Dexterity and +1 Wisdom")
             character.stats.wisdom += 1
         } else if (character.subrace === "Drow") {
+            console.log("Drow Elves get +2 Dexterity and +1 Charisma")
             character.stats.charisma += 1
         }
     } else if (character.race === "Gnome") {
         character.stats.intelligence += 2
         if (character.subrace === "Forest") {
+            console.log("Forest Gnomes get +2 Intelligence and +1 Dexterity")
             character.stats.dexterity += 1
         } else if (character.subrace === "Rock") {
+            console.log("Rock Gnomes get +2 Intelligence and +1 Constitution")
             character.stats.constitution += 1
         }
     } else if (character.race === "Half-Elf") {
+        console.log("Half-Elves get +2 Charisma, and +1 to two other stats of your choice. You can makes these choices after you pick your stats.")
         character.stats.charisma += 2
     } else if (character.race === "Halfling") {
         character.stats.dexterity += 2
         if (character.subrace === "Lightfoot") {
+            console.log("Lightfoot Halflings get +2 Dexterity and +1 Charisma")
             character.stats.charisma += 1
         } else if (character.subrace === "Stout") {
+            console.log("Stout Halflings get +2 Dexterity and +1 Constitution")
             character.stats.constitution += 1
         }
     } else if (character.race === "Half-Orc") {
+        console.log("Half-Orcs get +2 Strength and +1 Constitution")
         character.stats.strength += 2
         character.stats.constitution += 1
     } else if (character.race === "Human") {
         if (character.subrace === "Standard") {
+            console.log("Standard Humans get +1 to all of their stats")
             character.stats.strength += 1
             character.stats.constitution += 1
             character.stats.dexterity += 1
             character.stats.intelligence += 1
             character.stats.wisdom += 1
             character.stats.charisma += 1
+        } else if (character.subrace === "Variant") {
+            console.log("Human Variants get +1 to two stats of your choice. You can makes these choices after you pick your stats.")
         }
     } else if (character.race === "Tiefling") {
         character.stats.intelligence += 1
         if (character.subrace === "Standard") {
+            console.log("Standard Tieflings get +2 Charisma and +1 Intelligence")
             character.stats.charisma += 2
         } else if (character.subrace === "Feral") {
+            console.log("Feral Tieflings get +2 Dexterity and +1 Intelligence")
             character.stats.dexterity += 2
         }
     }
@@ -290,14 +308,14 @@ function rollStats(character) {
         let die3 = Math.floor(Math.random() * 6) + 1
         let die4 = Math.floor(Math.random() * 6) + 1
         let dieArray = [die1, die2, die3, die4]
-        let dieArraySorted = dieArray.sort(function(a, b){return a-b});
+        let dieArraySorted = dieArray.sort(function (a, b) { return a - b });
         console.log("Here are your six sided dice rolls: " + dieArraySorted)
         let total = dieArraySorted[1] + dieArraySorted[2] + dieArraySorted[3]
         console.log("Dropping the lowest of those rolls and adding together we get the following total: " + total)
-        rolledArray.push(total) 
+        rolledArray.push(total)
     }
     console.log("------------------------------------------------------------------------")
-    let rolledArraySorted = rolledArray.sort(function(a, b){return a-b})
+    let rolledArraySorted = rolledArray.sort(function (a, b) { return a - b })
     console.log("Your seven totals are: " + rolledArraySorted)
     let finalArray = [rolledArraySorted[1], rolledArraySorted[2], rolledArraySorted[3], rolledArraySorted[4], rolledArraySorted[5], rolledArraySorted[6]]
     console.log("By dropping the lowest of those, we now have your stats: " + finalArray)
@@ -305,20 +323,173 @@ function rollStats(character) {
 }
 
 function placeStats(character, statArray) {
-    console.log(statArray)
-    connection.end()
+    let allStatTypes = ["Strength", "Constitution", "Dexterity", "Intelligence", "Wisdom", "Charisma"]
+    inquirer.prompt([
+        {
+            type: "list",
+            name: "stat1",
+            message: "Where would you like to place your highest stat: " + statArray[statArray.length - 1] + "?",
+            choices: allStatTypes
+        }
+    ]).then(function (response) {
+        const stat1 = response.stat1
+        // Update stat
+        updateOneStat(character, stat1, allStatTypes, statArray)
+
+        // Update stat array
+        statArray.length = 5
+
+        // Update stat type array
+        let fiveStatTypes = []
+        for (let i = 0; i < allStatTypes.length; i++) {
+            if (allStatTypes[i] !== stat1) {
+                fiveStatTypes.push(allStatTypes[i])
+            }
+        }
+        console.log("five")
+        console.log(fiveStatTypes)
+
+        // Next number
+        console.log("Here are your current stats: ")
+        console.log(character.stats)
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "stat2",
+                message: "Where would you like to place your highest remaining stat: " + statArray[statArray.length - 1] + "?",
+                choices: fiveStatTypes
+            }
+        ]).then(function (response) {
+            const stat2 = response.stat2
+
+            updateOneStat(character, stat2, allStatTypes, statArray)
+
+            statArray.length = 4
+
+            let fourStatTypes = []
+            for (let i = 0; i < fiveStatTypes.length; i++) {
+                if (fiveStatTypes[i] !== stat2) {
+                    fourStatTypes.push(fiveStatTypes[i])
+                }
+            }
+            console.log("four")
+            console.log(fourStatTypes)
+
+            console.log("Here are your current stats: ")
+            console.log(character.stats)
+            inquirer.prompt([
+                {
+                    type: "list",
+                    name: "stat3",
+                    message: "Where would you like to place your highest remaining stat: " + statArray[statArray.length - 1] + "?",
+                    choices: fourStatTypes    
+                }
+            ]).then(function(response) {
+                const stat3 = response.stat3
+
+                updateOneStat(character, stat3, allStatTypes, statArray)
+
+                statArray.length = 3
+
+                let threeStatTypes = []
+                for (let i = 0; i < fourStatTypes.length; i++) {
+                    if (fourStatTypes[i] !== stat3) {
+                        threeStatTypes.push(fourStatTypes[i])
+                    }
+                }
+
+                console.log("Here are your current stats: ")
+                console.log(character.stats)    
+    
+                inquirer.prompt([
+                    {
+                        type: "list",
+                        name: "stat4",
+                        message: "Where would you like to place your highest remaining stat: " + statArray[statArray.length - 1] + "?",
+                        choices: threeStatTypes    
+                    }
+                ]).then(function(response) {
+                    const stat4 = response.stat4
+
+                    updateOneStat(character, stat4, allStatTypes, statArray)
+
+                    statArray.length = 2
+
+                    let twoStatTypes = []
+                    for (let i = 0; i < threeStatTypes.length; i++) {
+                        if (threeStatTypes[i] !== stat4) {
+                            twoStatTypes.push(threeStatTypes[i])
+                        }
+                    }    
+
+                    console.log("Here are your current stats: ")
+                    console.log(character.stats)    
+
+                    inquirer.prompt([
+                        {
+                            type: "list",
+                            name: "stat5",
+                            message: "Where would you like to place your highest remaining stat: " + statArray[statArray.length - 1] + "?",
+                            choices: twoStatTypes    
+                        }
+                    ]).then(function(response) {
+                        const stat5 = response.stat5
+
+                        updateOneStat(character, stat5, allStatTypes, statArray)
+
+                        statArray.length = 1
+
+                        let oneStatTypes = []
+                        for (let i = 0; i < twoStatTypes.length; i++) {
+                            if (twoStatTypes[i] !== stat5) {
+                                oneStatTypes.push(twoStatTypes[i])
+                            }
+                        }    
+
+                        const stat6 = oneStatTypes[0]
+                        updateOneStat(character, stat6, allStatTypes, statArray)
+
+                        console.log("That only leaves one place for your last stat. Your " + stat6 + " will be " + statArray[0])
+
+                        if (character.race === "Half-Elf" || (character.race === "Human" && character.subrace === "Variant")) {
+                            choosePlusOnes(character)
+                        } else {
+                            console.log("Here are your final stats: ")
+                            console.log(character.stats)
+                            connection.end()
+                        }
+                        
+                    })
+
+                })
+
+            })
+
+        })
+    })
 }
 
-function humanVariantStats(character) {
-
+function updateOneStat(character, stat, allStatTypes, statArray) {
+    if (stat === allStatTypes[0]) {
+        character.stats.strength += parseFloat(statArray[statArray.length - 1])
+    } else if (stat === allStatTypes[1]) {
+        character.stats.constitution += parseFloat(statArray[statArray.length - 1])
+    } else if (stat === allStatTypes[2]) {
+        character.stats.dexterity += parseFloat(statArray[statArray.length - 1])
+    } else if (stat === allStatTypes[3]) {
+        character.stats.intelligence += parseFloat(statArray[statArray.length - 1])
+    } else if (stat === allStatTypes[4]) {
+        character.stats.wisdom += parseFloat(statArray[statArray.length - 1])
+    } else {
+        character.stats.charisma += parseFloat(statArray[statArray.length - 1])
+    }
+    return character
 }
 
-function halfelfStats(character) {
-
+function choosePlusOnes(character) {
+    console.log("later")
 }
 
-// console.log(character)
-// connection.end()
 
 // Inquirer 5: Choose character weapon
 // just give appropriate armor and proficiencies, etc.
