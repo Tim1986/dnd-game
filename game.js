@@ -1,5 +1,6 @@
 const inquirer = require("inquirer");
 const mysql = require("mysql");
+const { printTable } = require('console-table-printer');
 
 const connection = mysql.createConnection({
     host: "localhost",
@@ -17,7 +18,7 @@ connection.connect(function (err) {
 
 function startMenu() {
     // Add option to view info. Stat bonuses for races, and what stats each class wants
-    const menuOptions = ["1. Create a Character", "2. View all Characters", "3. Edit a Character", "4. Delete a Character", "5. Make Two Characters Fight"]
+    const menuOptions = ["1. Create a Character", "2. View all Character Info", "3. View all Character Stats", "4. Edit a Character", "5. Delete a Character", "6. Make Two Characters Fight"]
     inquirer.prompt([
         {
             type: "list",
@@ -34,12 +35,15 @@ function startMenu() {
                 viewAllCharacters();
                 break;
             case menuOptions[2]:
-                editCharacter();
+                viewCharacterStats();
                 break;
             case menuOptions[3]:
-                deleteCharacter();
+                editCharacter();
                 break;
             case menuOptions[4]:
+                deleteCharacter();
+                break;
+            case menuOptions[5]:
                 fight();
                 break;
             default:
@@ -346,8 +350,6 @@ function placeStats(character, statArray) {
                 fiveStatTypes.push(allStatTypes[i])
             }
         }
-        console.log("five")
-        console.log(fiveStatTypes)
 
         // Next number
         console.log("Here are your current stats: ")
@@ -372,8 +374,6 @@ function placeStats(character, statArray) {
                     fourStatTypes.push(fiveStatTypes[i])
                 }
             }
-            console.log("four")
-            console.log(fourStatTypes)
 
             console.log("Here are your current stats: ")
             console.log(character.stats)
@@ -382,9 +382,9 @@ function placeStats(character, statArray) {
                     type: "list",
                     name: "stat3",
                     message: "Where would you like to place your highest remaining stat: " + statArray[statArray.length - 1] + "?",
-                    choices: fourStatTypes    
+                    choices: fourStatTypes
                 }
-            ]).then(function(response) {
+            ]).then(function (response) {
                 const stat3 = response.stat3
 
                 updateOneStat(character, stat3, allStatTypes, statArray)
@@ -399,16 +399,16 @@ function placeStats(character, statArray) {
                 }
 
                 console.log("Here are your current stats: ")
-                console.log(character.stats)    
-    
+                console.log(character.stats)
+
                 inquirer.prompt([
                     {
                         type: "list",
                         name: "stat4",
                         message: "Where would you like to place your highest remaining stat: " + statArray[statArray.length - 1] + "?",
-                        choices: threeStatTypes    
+                        choices: threeStatTypes
                     }
-                ]).then(function(response) {
+                ]).then(function (response) {
                     const stat4 = response.stat4
 
                     updateOneStat(character, stat4, allStatTypes, statArray)
@@ -420,19 +420,19 @@ function placeStats(character, statArray) {
                         if (threeStatTypes[i] !== stat4) {
                             twoStatTypes.push(threeStatTypes[i])
                         }
-                    }    
+                    }
 
                     console.log("Here are your current stats: ")
-                    console.log(character.stats)    
+                    console.log(character.stats)
 
                     inquirer.prompt([
                         {
                             type: "list",
                             name: "stat5",
                             message: "Where would you like to place your highest remaining stat: " + statArray[statArray.length - 1] + "?",
-                            choices: twoStatTypes    
+                            choices: twoStatTypes
                         }
-                    ]).then(function(response) {
+                    ]).then(function (response) {
                         const stat5 = response.stat5
 
                         updateOneStat(character, stat5, allStatTypes, statArray)
@@ -444,7 +444,7 @@ function placeStats(character, statArray) {
                             if (twoStatTypes[i] !== stat5) {
                                 oneStatTypes.push(twoStatTypes[i])
                             }
-                        }    
+                        }
 
                         const stat6 = oneStatTypes[0]
                         updateOneStat(character, stat6, allStatTypes, statArray)
@@ -452,13 +452,28 @@ function placeStats(character, statArray) {
                         console.log("That only leaves one place for your last stat. Your " + stat6 + " will be " + statArray[0])
 
                         if (character.race === "Half-Elf" || (character.race === "Human" && character.subrace === "Variant")) {
-                            choosePlusOnes(character)
+                            choosePlusOnes(character, allStatTypes)
                         } else {
                             console.log("Here are your final stats: ")
                             console.log(character.stats)
-                            connection.end()
+                            if (character.class === "Barbarian") {
+                                let barbarianWeapons = ["Longsword", "Glaive", "Greataxe", "Greatsword"]
+                                let barbarianArmor = ["Scale Mail", "Half Plate", "Unarmored Defense"]
+                                let shieldProficiency = true
+                                chooseEquipment(character, barbarianWeapons, barbarianArmor, shieldProficiency)
+                            } else if (character.class === "Fighter") {
+                                let fighterWeapons = ["Longsword", "Glaive", "Greataxe", "Greatsword"]
+                                let fighterArmor = ["Chain Mail", "Splint", "Plate"]
+                                let shieldProficiency = true
+                                chooseEquipment(character, fighterWeapons, fighterArmor, shieldProficiency)
+                            } else if (character.class === "Rogue") {
+                                let rogueWeapons = ["Rapier", "Shortswords"]
+                                let rogueArmor = ["Leather", "Studded Leather"]
+                                let shieldProficiency = false
+                                chooseEquipment(character, rogueWeapons, rogueArmor, shieldProficiency)
+                            }
                         }
-                        
+
                     })
 
                 })
@@ -486,31 +501,521 @@ function updateOneStat(character, stat, allStatTypes, statArray) {
     return character
 }
 
-function choosePlusOnes(character) {
-    console.log("later")
+function choosePlusOnes(character, allStatTypes) {
+    inquirer.prompt([
+        {
+            type: "list",
+            name: "firstIncrease",
+            message: "Your race allows you to give two separate stats +1. What's the first stat you'd like to increase?",
+            choices: allStatTypes
+        }
+    ]).then(function (response) {
+        const firstIncrease = response.firstIncrease
+        let plusOnes = ["1", "1"]
+        updateOneStat(character, firstIncrease, allStatTypes, plusOnes)
+        plusOnes.length = 1
+        let fiveStatTypes = []
+        for (let i = 0; i < allStatTypes.length; i++) {
+            if (allStatTypes[i] !== firstIncrease) {
+                fiveStatTypes.push(allStatTypes[i])
+            }
+        }
+        console.log("Here are your current stats: ")
+        console.log(character.stats)
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "secondIncrease",
+                message: "Your race allows you to give two separate stats +1. What's the second stat you'd like to increase?",
+                choices: fiveStatTypes
+            }
+        ]).then(function (response) {
+            const secondIncrease = response.secondIncrease
+            updateOneStat(character, secondIncrease, allStatTypes, plusOnes)
+            console.log("Here are your final stats: ")
+            console.log(character.stats)
+            // Need to adjust so halflings and gnomes can't use heavy weapons
+            if (character.class === "Barbarian") {
+                let barbarianWeapons = ["Longsword", "Glaive", "Greataxe", "Greatsword"]
+                let barbarianArmor = ["Scale Mail", "Half Plate", "Unarmored Defense"]
+                let shieldProficiency = true
+                chooseEquipment(character, barbarianWeapons, barbarianArmor, shieldProficiency)
+            } else if (character.class === "Fighter") {
+                let fighterWeapons = ["Longsword", "Glaive", "Greataxe", "Greatsword"]
+                let fighterArmor = ["Chain Mail", "Splint", "Plate"]
+                let shieldProficiency = true
+                chooseEquipment(character, fighterWeapons, fighterArmor, shieldProficiency)
+            } else if (character.class === "Rogue") {
+                let rogueWeapons = ["Rapier", "Shortswords"]
+                let rogueArmor = ["Leather", "Studded Leather"]
+                let shieldProficiency = false
+                chooseEquipment(character, rogueWeapons, rogueArmor, shieldProficiency)
+            }
+        })
+    })
 }
 
+function chooseEquipment(character, weaponArray, armorArray, isShieldProficient) {
+    inquirer.prompt([
+        {
+            type: "list",
+            name: "weaponChoice",
+            message: "What weapon would you like to use?",
+            choices: weaponArray
+        }
+    ]).then(function (response) {
+        const weaponChoice = response.weaponChoice
+        character.weapon = weaponChoice
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "armorChoice",
+                message: "What armor would you like to wear?",
+                choices: armorArray
+            }
+        ]).then(function (response) {
+            const armorChoice = response.armorChoice
+            character.armortype = armorChoice
+            if (isShieldProficient && weaponChoice === "Longsword") {
+                inquirer.prompt([
+                    {
+                        type: "list",
+                        name: "shieldChoice",
+                        message: "You have a hand free and you are shield proficient. Do you want to carry a shield?",
+                        choices: ["Yes", "No"]
+                    }
+                ]).then(function (response) {
+                    console.log(response)
+                    if (response.shieldChoice === "Yes") {
+                        character.shield = true
+                    } else {
+                        character.shield = false
+                    }
+                    console.log("ready to calculate AC")
+                    calculateAC(character)
+                })
+            } else {
+                character.shield = false
+                calculateAC(character)
+            }
 
-// Inquirer 5: Choose character weapon
-// just give appropriate armor and proficiencies, etc.
-// connection.end()
+        })
+    })
+}
+
+function calculateAC(character) {
+    let conModifier = 0
+    let dexModifier = 0
+    let dexModifierMaxTwo = 0
+    if (character.stats.dexterity === 8 || character.stats.dexterity === 9) {
+        dexModifier = -1
+        dexModifierMaxTwo = -1
+    } else if (character.stats.dexterity === 12 || character.stats.dexterity === 13) {
+        dexModifier = 1
+        dexModifierMaxTwo = 1
+    } else if (character.stats.dexterity === 14 || character.stats.dexterity === 15) {
+        dexModifier = 2
+        dexModifierMaxTwo = 2
+    } else if (character.stats.dexterity === 16 || character.stats.dexterity === 17) {
+        dexModifier = 3
+        dexModifierMaxTwo = 2
+    } else if (character.stats.dexterity === 18 || character.stats.dexterity === 19) {
+        dexModifier = 4
+        dexModifierMaxTwo = 2
+    } else if (character.stats.dexterity === 20) {
+        dexModifier = 5
+        dexModifierMaxTwo = 2
+    }
+
+    if (character.stats.constitution === 8 || character.stats.constitution === 9) {
+        conModifier = -1
+    } else if (character.stats.constitution === 12 || character.stats.constitution === 13) {
+        conModifier = 1
+    } else if (character.stats.constitution === 14 || character.stats.constitution === 15) {
+        conModifier = 2
+    } else if (character.stats.constitution === 16 || character.stats.constitution === 17) {
+        conModifier = 3
+    } else if (character.stats.constitution === 18 || character.stats.constitution === 19) {
+        conModifier = 4
+    } else if (character.stats.constitution === 20) {
+        conModifier = 5
+    }
+
+    if (character.armortype === "Leather") {
+        character.armorclass = 11 + dexModifier
+    } else if (character.armortype === "Studded Leather") {
+        character.armorclass = 12 + dexModifier
+    } else if (character.armortype === "Scale Mail") {
+        character.armorclass = 14 + dexModifierMaxTwo
+    } else if (character.armortype === "Half Plate") {
+        character.armorclass = 15 + dexModifierMaxTwo
+    } else if (character.armortype === "Unarmored Defense") {
+        character.armorclass = 10 + dexModifier + conModifier
+    } else if (character.armortype === "Chain Mail") {
+        character.armorclass = 16
+    } else if (character.armortype === "Splint") {
+        character.armorclass = 17
+    } else if (character.armortype === "Plate") {
+        character.armorclass = 18
+    }
+
+    if (character.shield) {
+        character.armorclass += 2
+    }
+    console.log(character)
+    if (character.class === "Barbarian") {
+        character.hitpoints = 12 + conModifier
+    } else if (character.class === "Fighter") {
+        character.hitpoints = 10 + conModifier
+    } else if (character.class === "Rogue") {
+        character.hitpoints = 8 + conModifier
+    }
+    console.log(character)
+    updateDatabase(character)
+}
+
+function updateDatabase(character) {
+    connection.query("INSERT INTO characters SET ?",
+        {
+            name: character.name,
+            race: character.race,
+            hitpoints: character.hitpoints,
+            subrace: character.subrace,
+            class: character.class,
+            strength: character.stats.strength,
+            constitution: character.stats.constitution,
+            dexterity: character.stats.dexterity,
+            intelligence: character.stats.intelligence,
+            wisdom: character.stats.wisdom,
+            charisma: character.stats.charisma,
+            weapon: character.weapon,
+            armortype: character.armortype,
+            shield: character.shield,
+            armorclass: character.armorclass,
+            level: 1
+        },
+        function (err, res) {
+            if (err) throw err;
+            connection.end()
+        }
+    )
+}
 
 function viewAllCharacters() {
-    console.log("2")
-    connection.end()
+    connection.query("SELECT name, level, subrace, race, subclass, class, weapon, armorclass, hitpoints FROM characters", function (err, res) {
+        if (err) throw err;
+        const queryTable = [];
+        for (let i = 0; i < res.length; i++) {
+            queryTable.push(res[i]);
+        }
+        printTable(queryTable);
+        connection.end()
+    })
+}
+
+function viewCharacterStats() {
+    connection.query("SELECT name, strength, constitution, dexterity, intelligence, wisdom, charisma FROM characters", function (err, res) {
+        if (err) throw err;
+        const queryTable = [];
+        for (let i = 0; i < res.length; i++) {
+            queryTable.push(res[i]);
+        }
+        printTable(queryTable);
+        connection.end()
+    })
 }
 
 function editCharacter() {
-    console.log("3")
-    connection.end()
+    inquirer.prompt([
+        {
+            type: "input",
+            name: "characterName",
+            message: "Please type the name of the character you'd like to edit"
+        }
+    ]).then(function (response) {
+        const characterName = response.characterName
+        connection.query("SELECT * FROM characters WHERE ?",
+            [
+                {
+                    name: characterName
+                }
+            ],
+            function (err, res) {
+                if (err) throw err;
+                if (res.length === 0) {
+                    console.log("That isn't a character name")
+                    connection.end()
+                } else {
+                    inquirer.prompt([
+                        {
+                            type: "list",
+                            name: "whatToEdit",
+                            message: "What would you like to edit?",
+                            choices: ["name", "level", "race", "subrace", "class", "subclass", "strength", "constitution", "dexterity", "intelligence", "wisdom", "charisma", "weapon", "armortype", "shield", "armorclass", "hitpoints"]
+                        }
+                    ]).then(function (response) {
+                        const whatToEdit = response.whatToEdit
+                        switch (whatToEdit) {
+                            case "name":
+                                changeCharacter(whatToEdit, characterName);
+                                break;
+                            case "level":
+                                changeCharacter(whatToEdit, characterName, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+                                break;
+                            case "race":
+                                changeCharacter(whatToEdit, characterName, ["Dragonborn", "Dwarf", "Elf", "Gnome", "Half-Elf", "Halfling", "Half-Orc", "Human", "Tiefling"]);
+                                break;
+                            case "subrace":
+                                changeCharacter(whatToEdit, characterName);
+                                break;
+                            case "class":
+                                changeCharacter(whatToEdit, characterName, ["Barbarian", "Fighter", "Rogue"]);
+                                break;
+                            case "subclass":
+                                changeCharacter(whatToEdit, characterName);
+                                break;
+                            case "strength":
+                                changeCharacter(whatToEdit, characterName, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+                                break;
+                            case "constitution":
+                                changeCharacter(whatToEdit, characterName, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+                                break;
+                            case "dexterity":
+                                changeCharacter(whatToEdit, characterName, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+                                break;
+                            case "intelligence":
+                                changeCharacter(whatToEdit, characterName, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+                                break;
+                            case "wisdom":
+                                changeCharacter(whatToEdit, characterName, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+                                break;
+                            case "charisma":
+                                changeCharacter(whatToEdit, characterName, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+                                break;
+                            case "weapon":
+                                changeCharacter(whatToEdit, characterName, ["Longsword", "Glaive", "Greataxe", "Greatsword", "Rapier", "Shortswords"]);
+                                break;
+                            case "armortype":
+                                changeCharacter(whatToEdit, characterName, ["Leather", "Studded Leather", "Scale Mail", "Half Plate", "Unarmored Defense", "Chain Mail", "Splint", "Plate"]);
+                                break;
+                            case "shield":
+                                changeCharacter(whatToEdit, characterName, [true, false]);
+                                break;
+                            case "armorclass":
+                                changeCharacter(whatToEdit, characterName, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]);
+                                break;
+                            case "hitpoints":
+                                changeCharacter(whatToEdit, characterName, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30])
+                            default:
+                                console.log("not possible")
+                        }
+
+                    })
+                }
+            }
+        )
+    })
+}
+
+function changeCharacter(whatToEdit, characterName, arrayOfOptions) {
+    if (whatToEdit === "name") {
+        inquirer.prompt([
+            {
+                type: "input",
+                name: "editItTo",
+                message: "What would you like to edit the name to?",
+            }
+        ]).then(function (response) {
+            let editItTo = response.editItTo
+            connection.query("SELECT * FROM characters WHERE ?",
+                [
+                    {
+                        name: editItTo
+                    }
+                ],
+                function (err, res) {
+                    if (err) throw err;
+                    if (res.length === 1) {
+                        console.log("That's already the name of a character")
+                        connection.end()
+                    } else {
+                        connection.query("UPDATE characters SET ? WHERE ?",
+                        [
+                            {
+                                name: editItTo
+                            },
+                            {
+                                name: characterName
+                            }
+                        ],
+                        function (err, res) {
+                            if (err) throw err;
+                            connection.end()
+                        }
+                    )        
+                    }
+                }
+            )
+
+        })
+    } else if (whatToEdit === "subclass") {
+        console.log("Not ready for subclasses")
+        connection.end()
+    } else if (whatToEdit === "subrace") {
+        // Query for race from characterName
+        connection.query("SELECT race FROM characters WHERE ?",
+            [
+                {
+                    name: characterName
+                }
+            ],
+            function (err, res) {
+                if (err) throw err;
+                console.log(res)
+                const arr = [];
+                for (const property in res[0]) {
+                    arr.push(res[0][property]);
+                }
+                let characterRace = arr[0]
+
+                if (characterRace === "Dragonborn") {
+                    let dragonbornArray = ["Black (Acid)", "Blue (Lightning)", "Brass (Fire)", "Bronze (Lightning)", "Copper (Acid)", "Gold (Fire)", "Green (Poison)", "Red (Fire)", "Silver (Cold)", "White (Cold)"]
+                    editSubrace(characterName, dragonbornArray)
+                } else if (characterRace === "Dwarf") {
+                    let dwarfArray = ["Hill", "Mountain"]
+                    editSubrace(characterName, dwarfArray)
+                } else if (characterRace === "Elf") {
+                    let elfArray = ["High", "Wood", "Drow"]
+                    editSubrace(characterName, elfArray)
+                } else if (characterRace === "Gnome") {
+                    let gnomeArray = ["Forest", "Rock"]
+                    editSubrace(characterName, gnomeArray)
+                } else if (characterRace === "Half-Elf") {
+                    let halfelfArray = ["Standard", "High", "Wood", "Drow"]
+                    editSubrace(characterName, halfelfArray)
+                } else if (characterRace === "Halfling") {
+                    let halflingArray = ["Lightfoot", "Stout"]
+                    editSubrace(characterName, halflingArray)
+                } else if (characterRace === "Half-Orc") {
+                    console.log("Half-Orcs don't have subraces")
+                    connection.end()
+                } else if (characterRace === "Human") {
+                    let humanArray = ["Standard", "Variant"]
+                    editSubrace(characterName, humanArray)
+                } else if (characterRace === "Tiefling") {
+                    let tieflingArray = ["Standard", "Feral"]
+                    editSubrace(characterName, tieflingArray)
+                }
+            }
+        )
+    } else {
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "editItTo",
+                message: "What would you like to edit the " + whatToEdit + " to?",
+                choices: arrayOfOptions
+            }
+        ]).then(function(response) {
+            let editItTo = response.editItTo
+            connection.query("UPDATE characters SET " + whatToEdit + " = '" + editItTo + "' WHERE ?",
+                [
+                    {
+                        name: characterName
+                    }    
+                ],
+                function (err, res) {
+                    if (err) throw err;
+                    connection.end()
+                }
+            )
+        })
+    }
+
+}
+
+function editSubrace(characterName, arrayOfOptions) {
+    inquirer.prompt([
+        {
+            type: "list",
+            name: "editItTo",
+            message: "What would you like the new subrace to be?",
+            choices: arrayOfOptions
+        }
+    ]).then(function(response) {
+        let editItTo = response.editItTo
+        connection.query("UPDATE characters SET subrace = '" + editItTo + "' WHERE ?",
+            [
+                {
+                    name: characterName
+                }
+            ],
+            function (err, res) {
+                if (err) throw err;
+                connection.end()
+            }
+        )
+    })
 }
 
 function deleteCharacter() {
-    console.log("4")
-    connection.end()
+    inquirer.prompt([
+        {
+            type: "input",
+            name: "characterName",
+            message: "Please type the name of the character you'd like to delete"
+        }
+    ]).then(function (response) {
+        const characterName = response.characterName
+        connection.query("SELECT * FROM characters WHERE ?",
+            [
+                {
+                    name: characterName
+                }
+            ],
+            function (err, res) {
+                if (err) throw err;
+                if (res.length === 0) {
+                    console.log("That isn't a character name")
+                    connection.end()
+                } else {
+                    connection.query("DELETE FROM characters WHERE ?",
+                        [
+                            {
+                                name: characterName
+                            }
+                        ],
+                        function (err, res) {
+                            if (err) throw err;
+                            connection.end()
+                        }
+                    );
+                }
+            }
+        )
+    })
 }
 
 function fight() {
-    console.log("5")
-    connection.end()
+    // choose two characters to fight
+
+}
+
+function barbarianAttack() {
+    // choose whether or not to rage
+    // choose whether or not to reckless attack
+    // chance to hit modifier = proficiency (from level) + strength
+    // determine whether advantage
+    // roll against opposing AC
+    // determine crit
+    // determine if target has resistance
+    // if no crit, damage is weapon roll plus strength
+}
+
+function fighterAttack() {
+
+}
+
+function rogueAttack() {
+
 }
