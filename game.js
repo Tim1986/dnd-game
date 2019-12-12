@@ -127,7 +127,7 @@ function chooseRace(character) {
                 chooseSubrace(character, halflingArray, halflingString);
                 break;
             case characterRaceOptions[6]:
-                obj.subrace = "None"
+                character.subrace = "None"
                 chooseClass(character);
                 break;
             case characterRaceOptions[7]:
@@ -998,18 +998,220 @@ function deleteCharacter() {
 
 function fight() {
     // choose two characters to fight
-
+    // roll for initiative
+    let character1 = {
+        name: "Gronk",
+        level: 1,
+        weapon: "Greataxe",
+        armorclass: 15,
+        hitpoints: 15,
+        strength: 16
+    }
+    let character1conditions = {
+        hasadvantage: false,
+        raging: false,
+        physicalresistance: false
+    }
+    let character2 = {
+        name: "Noble",
+        level: 1,
+        weapon: "Longsword",
+        armorclass: 18,
+        hitpoints: 13,
+        strength: 16
+    }
+    let character2conditions = {
+        hasadvantage: false,
+        raging: false,
+        physicalresistance: false
+    }
+    barbarianAttack1(character1, character1conditions, character2, character2conditions)
 }
 
-function barbarianAttack() {
-    // choose whether or not to rage
-    // choose whether or not to reckless attack
-    // chance to hit modifier = proficiency (from level) + strength
-    // determine whether advantage
-    // roll against opposing AC
-    // determine crit
-    // determine if target has resistance
-    // if no crit, damage is weapon roll plus strength
+function barbarianAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions) {
+    if (!myConditions.raging) {
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "goIntoRage",
+                message: myCharacter.name + " is currently not raging. Bonus action to rage?",
+                choices: ["Yes", "No"]
+            }
+        ]).then(function(response) {
+            const goIntoRage = response.goIntoRage
+            if (goIntoRage === "Yes") {
+                myConditions.raging = true
+                myConditions.physicalresistance = true
+            }
+            barbarianAttack2(myCharacter, myConditions, enemyCharacter, enemyConditions)
+        })
+    } else {
+        barbarianAttack2(myCharacter, myConditions, enemyCharacter, enemyConditions)
+    }
+}
+
+function barbarianAttack2(myCharacter, myConditions, enemyCharacter, enemyConditions) {
+    inquirer.prompt([
+        {
+            type: "list",
+            name: "recklessAttack",
+            message: "Would you like " + myCharacter.name + " to recklessly attack? If so, you will attack at advantage, but also be attacked at advantage.",
+            choices: ["Yes", "No"]
+        }
+    ]).then(function(response) {
+        const recklessAttack = response.recklessAttack
+        if (recklessAttack === "Yes") {
+            myConditions.hasadvantage = true
+            enemyConditions.hasadvantage = true
+        }
+        barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyConditions)
+    })
+}
+
+function barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyConditions) {
+    let AC = enemyCharacter.armorclass
+    let level = myCharacter.level
+    let proficiency = 2
+    let primaryStatModifier = 0
+    if (level > 4) {
+        proficiency = 3
+    }
+    if (level > 8) {
+        proficiency = 4
+    }
+    if (level > 12) {
+        proficiency = 5
+    }
+    if (level > 16) {
+        proficiency = 6
+    }
+    if (myCharacter.weapon === "Rapier" || myCharacter.weapon === "Shortswords") {
+        if (myCharacter.dexterity === 8 || myCharacter.dexterity === 9) {
+            primaryStatModifier = -1
+        } else if (myCharacter.dexterity === 12 || myCharacter.dexterity === 13) {
+            primaryStatModifier = 1
+        } else if (myCharacter.dexterity === 14 || myCharacter.dexterity === 15) {
+            primaryStatModifier = 2
+        } else if (myCharacter.dexterity === 16 || myCharacter.dexterity === 17) {
+            primaryStatModifier = 3
+        } else if (myCharacter.dexterity === 18 || myCharacter.dexterity === 19) {
+            primaryStatModifier = 4
+        } else if (myCharacter.dexterity === 20) {
+            primaryStatModifier = 5
+        }
+    } else {
+        if (myCharacter.strength === 8 || myCharacter.strength === 9) {
+            primaryStatModifier = -1
+        } else if (myCharacter.strength === 12 || myCharacter.strength === 13) {
+            primaryStatModifier = 1
+        } else if (myCharacter.strength === 14 || myCharacter.strength === 15) {
+            primaryStatModifier = 2
+        } else if (myCharacter.strength === 16 || myCharacter.strength === 17) {
+            primaryStatModifier = 3
+        } else if (myCharacter.strength === 18 || myCharacter.strength === 19) {
+            primaryStatModifier = 4
+        } else if (myCharacter.strength === 20) {
+            primaryStatModifier = 5
+        }
+    }
+    let bonusToHit = primaryStatModifier + proficiency
+    console.log("bonusToHit: " + bonusToHit)
+    let d20 = 0
+
+    if (myConditions.hasadvantage === true) {
+        let die1 = Math.floor(Math.random() * 20) + 1
+        let die2 = Math.floor(Math.random() * 20) + 1
+        if (die1 > die2) {
+            d20 = die1
+        } else {
+            d20 = die2
+        }
+    } else {
+        let die3 = Math.floor(Math.random() * 20) + 1
+        d20 = die3
+    }
+
+    console.log("d20: " + d20)
+    console.log("AC: " + AC)
+    let finalDamage = 0
+    if (bonusToHit + d20 >= AC) {
+        console.log("hit")
+        let crit = false
+        if (d20 === 20) {
+            crit = true
+        }
+        let weaponDamage = 0
+        let rageDamage = 0
+        let primaryStatModifierDamage = primaryStatModifier
+
+        if (myCharacter.weapon === "Longsword" || myCharacter.weapon === "Rapier") {
+            if (crit) {
+                let die1 = Math.floor(Math.random() * 8) + 1
+                let die2 = Math.floor(Math.random() * 8) + 1
+                weaponDamage = die1 + die2
+            } else {
+                let die3 = Math.floor(Math.random() * 8) + 1
+                weaponDamage = die3
+            }
+        } else if (myCharacter.weapon === "Greataxe") {
+            if (crit) {
+                let die1 = Math.floor(Math.random() * 12) + 1
+                let die2 = Math.floor(Math.random() * 12) + 1
+                weaponDamage = die1 + die2
+            } else {
+                let die3 = Math.floor(Math.random() * 12) + 1
+                weaponDamage = die3
+            }
+        } else if (myCharacter.weapon === "Greatsword") {
+            if (crit) {
+                let die1 = Math.floor(Math.random() * 6) + 1
+                let die2 = Math.floor(Math.random() * 6) + 1
+                let die3 = Math.floor(Math.random() * 6) + 1
+                weaponDamage = die1 + die2 + die3
+            } else {
+                let die4 = Math.floor(Math.random() * 6) + 1
+                let die5 = Math.floor(Math.random() * 6) + 1
+                weaponDamage = die4 + die5
+            }
+        } else if (myCharacter.weapon === "Glaive") {
+            if (crit) {
+                let die1 = Math.floor(Math.random() * 10) + 1
+                let die2 = Math.floor(Math.random() * 10) + 1
+                weaponDamage = die1 + die2
+            } else {
+                let die3 = Math.floor(Math.random() * 10) + 1
+                weaponDamage = die3
+            }
+        } else {
+            console.log("unrecognized weapon")
+        }
+
+        if (myConditions.raging) {
+            // not level specific yet
+            rageDamage = 2
+        }
+
+        let damage = weaponDamage + rageDamage + primaryStatModifierDamage
+        let finalDamage = 0
+        if (enemyConditions.physicalresistance) {
+            finalDamage = Math.floor(damage / 2)
+        } else {
+            finalDamage = damage
+        }
+        console.log("finalDamage: " + finalDamage)
+        enemyCharacter.hitpoints -= finalDamage
+        if (enemyCharacter.hitpoints < 1) {
+            console.log("enemy down")
+        } else {
+            console.log("enemy's HP: " + enemyCharacter.hitpoints)
+        }
+        connection.end()
+    } else {
+        console.log("missed")
+        console.log("enemy's HP: " + enemyCharacter.hitpoints)
+        connection.end()
+    }
+
 }
 
 function fighterAttack() {
