@@ -1029,6 +1029,9 @@ function fight() {
 }
 
 function barbarianAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions) {
+    // if (myConditions.paralyzed) {
+    //     savingThrow();
+    // }
     if (!myConditions.raging) {
         inquirer.prompt([
             {
@@ -1133,7 +1136,6 @@ function barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyCondit
 
     console.log("d20: " + d20)
     console.log("AC: " + AC)
-    let finalDamage = 0
     if (bonusToHit + d20 >= AC) {
         console.log("hit")
         let crit = false
