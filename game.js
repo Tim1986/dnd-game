@@ -177,7 +177,7 @@ function chooseSubrace(character, characterSubraceOptions, messageString) {
 }
 
 function chooseClass(character) {
-    const characterClassOptions = ["Barbarian", "Fighter", "Rogue"]
+    const characterClassOptions = ["Barbarian", "Fighter", "Rogue", "Wizard"]
     inquirer.prompt([
         {
             type: "list",
@@ -471,6 +471,9 @@ function placeStats(character, statArray) {
                                 let rogueArmor = ["Leather", "Studded Leather"]
                                 let shieldProficiency = false
                                 chooseEquipment(character, rogueWeapons, rogueArmor, shieldProficiency)
+                            } else if (character.class === "Wizard") {
+                                character.armortype = "None"
+                                calculateAC(character)
                             }
                         }
 
@@ -550,6 +553,9 @@ function choosePlusOnes(character, allStatTypes) {
                 let rogueArmor = ["Leather", "Studded Leather"]
                 let shieldProficiency = false
                 chooseEquipment(character, rogueWeapons, rogueArmor, shieldProficiency)
+            } else if (character.class === "Wizard") {
+                character.armortype = "None"
+                calculateAC(character)
             }
         })
     })
@@ -657,6 +663,8 @@ function calculateAC(character) {
         character.armorclass = 17
     } else if (character.armortype === "Plate") {
         character.armorclass = 18
+    } else if (character.armortype === "None") {
+        character.armorclass = 10 + dexModifier
     }
 
     if (character.shield) {
@@ -669,6 +677,8 @@ function calculateAC(character) {
         character.hitpoints = 10 + conModifier
     } else if (character.class === "Rogue") {
         character.hitpoints = 8 + conModifier
+    } else if (character.class === "Wizard") {
+        character.hitpoints = 6 + conModifier
     }
     console.log(character)
     updateDatabase(character)
@@ -915,6 +925,10 @@ function changeCharacter(whatToEdit, characterName, arrayOfOptions) {
                                 let levelOne = 8 + conModifier
                                 let otherLevels = (5 + conModifier) * (editItTo - 1)
                                 newHP = levelOne + otherLevels
+                            } else if (characterClass === "Wizard") {
+                                let levelOne = 6 + conModifier
+                                let otherLevels = (4 + conModifier) * (editItTo - 1)
+                                newHP = levelOne + otherLevels
                             }
                             console.log(newHP)
                             connection.query("UPDATE characters SET hitpoints = '" + newHP + "' WHERE ?",
@@ -1130,13 +1144,71 @@ function fight() {
                                     ],
                                     function (err, res) {
                                         let character1 = res[0]
+                                        let proficiency = convertLevelToProficiency(character1.level)
+                                        let conModifier = statToModifier(character1.constitution)
+                                        let wisModifier = statToModifier(character1.wisdom)
+                                        let intModifier = statToModifier(character1.intelligence)
+                                        let dexModifier = statToModifier(character1.dexterity)
+                                        if (character1.class === "Barbarian" || character1.class === "Fighter") {
+                                            character1.constitutionSave = proficiency + conModifier
+                                            character1.wisdomSave = wisModifier
+                                            character1.dexteritySave = dexModifier
+                                        } else if (character1.class === "Rogue") {
+                                            character1.constitutionSave = conModifier
+                                            character1.wisdomSave = proficiency + wisModifier
+                                            character1.dexteritySave = proficiency + dexModifier
+                                        } else if (character1.class === "Wizard") {
+                                            character1.constitutionSave = conModifier
+                                            character1.wisdomSave = proficiency + wisModifier
+                                            character1.dexteritySave = dexModifier
+                                            character1.spellSave = 8 + proficiency + intModifier
+                                            character1.spellAttack = proficiency + intModifier
+                                            if (character1.level === 1) {
+                                                character1.spellSlots = {
+                                                    levelOne: 2
+                                                }
+                                            } else if (character1.level === 2) {
+                                                character1.spellSlots = {
+                                                    levelOne: 3
+                                                }
+                                            } else if (character1.level === 3) {
+                                                character1.spellSlots = {
+                                                    levelOne: 4,
+                                                    levelTwo: 2
+                                                }
+                                            } else if (character1.level === 4) {
+                                                character1.spellSlots = {
+                                                    levelOne: 4,
+                                                    levelTwo: 3
+                                                }
+                                            } else if (character1.level === 5) {
+                                                character1.spellSlots = {
+                                                    levelOne: 4,
+                                                    levelTwo: 3,
+                                                    levelThree: 2
+                                                }
+                                            } else {
+                                                character1.spellSlots = {
+                                                    levelOne: 4,
+                                                    levelTwo: 3,
+                                                    levelThree: 3
+                                                }
+                                            }
+                                        }
+
                                         let character1conditions = {
                                             hasadvantage: false,
+                                            hasdisdavantage: false,
+                                            paralyzed: false,
+                                            concentrating: false,
                                             raging: false,
                                             physicalresistance: false
                                         }
                                         let character2conditions = {
                                             hasadvantage: false,
+                                            hasdisdavantage: false,
+                                            paralyzed: false,
+                                            concentrating: false,
                                             raging: false,
                                             physicalresistance: false
                                         }
@@ -1148,6 +1220,59 @@ function fight() {
                                             ],
                                             function (err, res) {
                                                 let character2 = res[0]
+                                                // con save
+
+                                                let proficiency = convertLevelToProficiency(character2.level)
+                                                let conModifier = statToModifier(character2.constitution)
+                                                let wisModifier = statToModifier(character2.wisdom)
+                                                let intModifier = statToModifier(character2.intelligence)
+                                                let dexModifier = statToModifier(character2.dexterity)
+                                                if (character2.class === "Barbarian" || character2.class === "Fighter") {
+                                                    character2.constitutionSave = proficiency + conModifier
+                                                    character2.wisdomSave = wisModifier
+                                                    character2.dexteritySave = dexModifier
+                                                } else if (character2.class === "Rogue") {
+                                                    character2.constitutionSave = conModifier
+                                                    character2.wisdomSave = proficiency + wisModifier
+                                                    character2.dexteritySave = proficiency + dexModifier
+                                                } else if (character2.class === "Wizard") {
+                                                    character2.constitutionSave = conModifier
+                                                    character2.wisdomSave = proficiency + wisModifier
+                                                    character2.dexteritySave = dexModifier
+                                                    character2.spellSave = 8 + proficiency + intModifier
+                                                    character2.spellAttack = proficiency + intModifier
+                                                    if (character2.level === 1) {
+                                                        character2.spellSlots = {
+                                                            levelOne: 2
+                                                        }
+                                                    } else if (character2.level === 2) {
+                                                        character2.spellSlots = {
+                                                            levelOne: 3
+                                                        }
+                                                    } else if (character2.level === 3) {
+                                                        character2.spellSlots = {
+                                                            levelOne: 4,
+                                                            levelTwo: 2
+                                                        }
+                                                    } else if (character2.level === 4) {
+                                                        character2.spellSlots = {
+                                                            levelOne: 4,
+                                                            levelTwo: 3
+                                                        }
+                                                    } else if (character2.level === 5) {
+                                                        character2.spellSlots = {
+                                                            levelOne: 4,
+                                                            levelTwo: 3,
+                                                            levelThree: 2
+                                                        }
+                                                    } else {
+                                                        character2.spellSlots = {
+                                                            levelOne: 4,
+                                                            levelTwo: 3,
+                                                            levelThree: 3
+                                                        }
+                                                    }
+                                                }
 
                                                 if (wonInitiative === combatant1) {
                                                     if (character1.class === "Barbarian") {
@@ -1156,6 +1281,8 @@ function fight() {
                                                         fighterAttack1(character1, character1conditions, character2, character2conditions)
                                                     } else if (character1.class === "Rogue") {
                                                         rogueAttack1(character1, character1conditions, character2, character2conditions)
+                                                    } else if (character1.class === "Wizard") {
+                                                        wizardAttack1(character1, character1conditions, character2, character2conditions)
                                                     }
                                                 } else {
                                                     if (character2.class === "Barbarian") {
@@ -1164,6 +1291,9 @@ function fight() {
                                                         fighterAttack1(character2, character2conditions, character1, character1conditions)
                                                     } else if (character2.class === "Rogue") {
                                                         rogueAttack1(character2, character2conditions, character1, character1conditions)
+                                                    } else if (character2.class === "Wizard") {
+                                                        wizardAttack1(character2, character2conditions, character1, character1conditions)
+
                                                     }
                                                 }
                                             }
@@ -1198,6 +1328,7 @@ function rollForInitiative(combatant1, combatant1DexMod, combatant2, combatant2D
         return 2
     }
 }
+
 function findInitiative(Dex) {
     if (Dex === 8 || Dex === 9) {
         Modifier = -1
@@ -1218,28 +1349,39 @@ function findInitiative(Dex) {
 }
 
 function barbarianAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions) {
-    // if (myConditions.paralyzed) {
-    //     savingThrow();
-    // }
-    if (!myConditions.raging) {
-        inquirer.prompt([
-            {
-                type: "list",
-                name: "goIntoRage",
-                message: myCharacter.name + " is currently not raging. Bonus action to rage?",
-                choices: ["Yes", "No"]
-            }
-        ]).then(function (response) {
-            const goIntoRage = response.goIntoRage
-            if (goIntoRage === "Yes") {
-                myConditions.raging = true
-                myConditions.physicalresistance = true
-            }
-            barbarianAttack2(myCharacter, myConditions, enemyCharacter, enemyConditions)
-        })
+    if (myConditions.paralyzed) {
+        console.log("I'm paralyzed, so the only thing to do is roll to break it. My D20 roll plus my wisdom save (" + myCharacter.wisdomSave + ") needs to beat the Wizard's spell save (" + enemyCharacter.spellSave)
+        let die1 = Math.floor(Math.random() * 20) + 1
+        if (die1 + myCharacter.wisdomSave >= enemyCharacter.spellSave) {
+            console.log("I broke the paralysis with a roll of " + die1 + ". Next turn I'll get him!")
+            myConditions.paralyzed = false
+            wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else {
+            console.log("Sigh, I couldn't break the paralysis, I only rolled a " + die1)
+            wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        }
     } else {
-        barbarianAttack2(myCharacter, myConditions, enemyCharacter, enemyConditions)
+        if (!myConditions.raging) {
+            inquirer.prompt([
+                {
+                    type: "list",
+                    name: "goIntoRage",
+                    message: myCharacter.name + " is currently not raging. Bonus action to rage?",
+                    choices: ["Yes", "No"]
+                }
+            ]).then(function (response) {
+                const goIntoRage = response.goIntoRage
+                if (goIntoRage === "Yes") {
+                    myConditions.raging = true
+                    myConditions.physicalresistance = true
+                }
+                barbarianAttack2(myCharacter, myConditions, enemyCharacter, enemyConditions)
+            })
+        } else {
+            barbarianAttack2(myCharacter, myConditions, enemyCharacter, enemyConditions)
+        }
     }
+
 }
 
 function barbarianAttack2(myCharacter, myConditions, enemyCharacter, enemyConditions) {
@@ -1310,6 +1452,22 @@ function findPrimaryStatModifier(myCharacter) {
     return primaryStatModifier
 }
 
+function statToModifier(stat) {
+    if (stat === 8 || stat === 9) {
+        return -1
+    } else if (stat === 12 || stat === 13) {
+        return 1
+    } else if (stat === 14 || stat === 15) {
+        return 2
+    } else if (stat === 16 || stat === 17) {
+        return 3
+    } else if (stat === 18 || stat === 19) {
+        return 4
+    } else if (stat === 20) {
+        return 5
+    }
+}
+
 function rollingD20(myConditions) {
     let d20 = 0
     if (myConditions.hasadvantage === true) {
@@ -1353,11 +1511,25 @@ function barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyCondit
             fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
         } else if (enemyCharacter.class === "Rogue") {
             rogueAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else if (enemyCharacter.class === "Wizard") {
+            wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
         }
     }
 }
 
 function fighterAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions) {
+    if (myConditions.paralyzed) {
+        console.log("I'm paralyzed, so the only thing to do is roll to break it. My D20 roll plus my wisdom save (" + myCharacter.wisdomSave + ") needs to beat the Wizard's spell save (" + enemyCharacter.spellSave)
+        let die1 = Math.floor(Math.random() * 20) + 1
+        if (die1 + myCharacter.wisdomSave >= enemyCharacter.spellSave) {
+            console.log("I broke the paralysis with a roll of " + die1 + ". Next turn I'll get him!")
+            myConditions.paralyzed = false
+            wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else {
+            console.log("Sigh, I couldn't break the paralysis, I only rolled a " + die1)
+            wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        }
+    }
     let finalDamage = 0
     let firstAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, false)
     finalDamage += firstAttackDamage
@@ -1386,11 +1558,25 @@ function fighterAttack1(myCharacter, myConditions, enemyCharacter, enemyConditio
             fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
         } else if (enemyCharacter.class === "Rogue") {
             rogueAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else if (enemyCharacter.class === "Wizard") {
+            wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
         }
     }
 }
 
 function rogueAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions) {
+    if (myConditions.paralyzed) {
+        console.log("I'm paralyzed, so the only thing to do is roll to break it. My D20 roll plus my wisdom save (" + myCharacter.wisdomSave + ") needs to beat the Wizard's spell save (" + enemyCharacter.spellSave)
+        let die1 = Math.floor(Math.random() * 20) + 1
+        if (die1 + myCharacter.wisdomSave >= enemyCharacter.spellSave) {
+            console.log("I broke the paralysis with a roll of " + die1 + ". Next turn I'll get him!")
+            myConditions.paralyzed = false
+            wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else {
+            console.log("Sigh, I couldn't break the paralysis, I only rolled a " + die1)
+            wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        }
+    }
     let finalDamage = 0
     let firstAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, false)
     finalDamage += firstAttackDamage
@@ -1416,14 +1602,197 @@ function rogueAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions
             fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
         } else if (enemyCharacter.class === "Rogue") {
             rogueAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else if (enemyCharacter.class === "Wizard") {
+            wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
         }
     }
 }
 
+function wizardAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions) {
+    console.log("***************************************************************")
+    console.log(myCharacter.name + "'s turn to attack " + enemyCharacter.name)
+    if (myConditions.paralyzed) {
+        console.log("I'm paralyzed, so the only thing to do is roll to break it. My D20 roll plus my wisdom save (" + myCharacter.wisdomSave + ") needs to beat the Wizard's spell save (" + enemyCharacter.spellSave)
+        let die1 = Math.floor(Math.random() * 20) + 1
+        if (die1 + myCharacter.wisdomSave >= enemyCharacter.spellSave) {
+            console.log("I broke the paralysis with a roll of " + die1 + ". Next turn I'll get him!")
+            myConditions.paralyzed = false
+            wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else {
+            console.log("Sigh, I couldn't break the paralysis, I only rolled a " + die1)
+            wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        }
+    }
+    let spellLevelChoicesArray = [0]
+    if (myCharacter.spellSlots.levelOne > 0) {
+        spellLevelChoicesArray.push(1)
+    }
+    if (myCharacter.spellSlots.levelTwo > 0) {
+        spellLevelChoicesArray.push(2)
+    }
+    if (myCharacter.spellSlots.levelThree > 0) {
+        spellLevelChoicesArray.push(3)
+    }
+    inquirer.prompt([
+        {
+            type: "list",
+            name: "spellLevel",
+            message: "What level spell would you like to cast? Options dependent on available spell slots",
+            choices: spellLevelChoicesArray
+        }
+    ]).then(function (response) {
+        if (response.spellLevel === 0) {
+            console.log("Casting Firebolt!")
+
+            let AC = enemyCharacter.armorclass
+            console.log("Enemy's Armor Class: " + AC)
+            let level = myCharacter.level
+
+            // Initialize, get, announce proficiency
+            let proficiency = convertLevelToProficiency(level)
+            console.log("My Level is " + level + ", so my proficiency is " + proficiency)
+
+            let bonusToHit = myCharacter.spellAttack
+
+            let d20 = rollingD20(myConditions)
+
+            console.log("d20: " + d20)
+            console.log("AC: " + AC)
+
+            if (bonusToHit + d20 >= AC) {
+                console.log("My bonusToHit (" + bonusToHit + ") + my d20 (" + d20 + ") is greater or equal to my enemy's AC (" + AC + "), so I hit")
+                let crit = false
+                if (d20 === 20 || enemyConditions.paralyzed) {
+                    crit = true
+                    console.log("Ooh, a crit! That means I get to double my cantrip damage!")
+                }
+                let weaponDamage = 0
+                if (myCharacter.level < 5) {
+                    if (crit) {
+                        let die1 = Math.floor(Math.random() * 10) + 1
+                        let die2 = Math.floor(Math.random() * 10) + 1
+                        weaponDamage += die1 + die2
+                    } else {
+                        let die1 = Math.floor(Math.random() * 10) + 1
+                        weaponDamage += die1
+                    }
+                } else if (myCharacter.level < 11 && myCharacter.level > 4) {
+                    if (crit) {
+                        let die1 = Math.floor(Math.random() * 10) + 1
+                        let die2 = Math.floor(Math.random() * 10) + 1
+                        let die3 = Math.floor(Math.random() * 10) + 1
+                        let die4 = Math.floor(Math.random() * 10) + 1
+                        weaponDamage += die1 + die2 + die3 + die4
+                    } else {
+                        let die1 = Math.floor(Math.random() * 10) + 1
+                        let die2 = Math.floor(Math.random() * 10) + 1
+                        weaponDamage += die1 + die2
+                    }
+                } else if (myCharacter.level < 17 && myCharacter.level > 10) {
+                    if (crit) {
+                        let die1 = Math.floor(Math.random() * 10) + 1
+                        let die2 = Math.floor(Math.random() * 10) + 1
+                        let die3 = Math.floor(Math.random() * 10) + 1
+                        let die4 = Math.floor(Math.random() * 10) + 1
+                        let die5 = Math.floor(Math.random() * 10) + 1
+                        let die6 = Math.floor(Math.random() * 10) + 1
+                        weaponDamage += die1 + die2 + die3 + die4 + die5 + die6
+                    } else {
+                        let die1 = Math.floor(Math.random() * 10) + 1
+                        let die2 = Math.floor(Math.random() * 10) + 1
+                        let die3 = Math.floor(Math.random() * 10) + 1
+                        weaponDamage += die1 + die2 + die3
+                    }
+                } else {
+                    if (crit) {
+                        let die1 = Math.floor(Math.random() * 10) + 1
+                        let die2 = Math.floor(Math.random() * 10) + 1
+                        let die3 = Math.floor(Math.random() * 10) + 1
+                        let die4 = Math.floor(Math.random() * 10) + 1
+                        let die5 = Math.floor(Math.random() * 10) + 1
+                        let die6 = Math.floor(Math.random() * 10) + 1
+                        let die7 = Math.floor(Math.random() * 10) + 1
+                        let die8 = Math.floor(Math.random() * 10) + 1
+                        weaponDamage += die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8
+                    } else {
+                        let die1 = Math.floor(Math.random() * 10) + 1
+                        let die2 = Math.floor(Math.random() * 10) + 1
+                        let die3 = Math.floor(Math.random() * 10) + 1
+                        let die4 = Math.floor(Math.random() * 10) + 1
+                        weaponDamage += die1 + die2 + die3 + die4
+                    }
+                }
+                console.log("Firebolt damage: " + weaponDamage)
+                enemyCharacter.hitpoints -= weaponDamage
+
+            } else {
+                console.log("My bonusToHit (" + bonusToHit + ") + my d20 (" + d20 + ") is less than my enemy's AC (" + AC + "), so I miss")
+            }
+        } else if (response.spellLevel === 1) {
+            console.log("Casting Magic Missile!")
+            myCharacter.spellSlots.levelOne -= 1
+            console.log("Magic Missile never misses!")
+            let die1 = Math.floor(Math.random() * 4) + 1
+            let finalDamage = (die1 + 1) * (3)
+            console.log("Magic missile damage: " + finalDamage)
+            enemyCharacter.hitpoints -= finalDamage
+        } else if (response.spellLevel === 2) {
+            console.log("Casting Hold Person!")
+            myCharacter.spellSlots.levelTwo -= 1
+            console.log("In order to land, I need my opponent's D20 + wisdom save (" + enemyCharacter.wisdomSave + ") to be lower than my spell save (" + myCharacter.spellSave + ")")
+            let d20 = Math.floor(Math.random() * 20) + 1
+            if (d20 + enemyCharacter.wisdomSave >= myCharacter.spellSave) {
+                console.log("He evaded my paralysis with a roll of " + d20 + ". Sad!")
+            } else {
+                console.log("Haha, he only rolled a " + d20 + ", he's paralyzed now! My attack rolls will auto crit and he can only spend his turns trying to break the paralysis.")
+                enemyConditions.paralyzed = true
+            }
+        } else if (response.spellLevel === 3) {
+            console.log("Casting Fireball!")
+            myCharacter.spellSlots.levelThree -= 1
+            console.log("If " + enemyCharacter.name + " fails their dexterity saving throw, they take 8D6 damage. Otherwise half")
+            let d20 = Math.floor(Math.random() * 20) + 1
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            let die8 = Math.floor(Math.random() * 6) + 1
+            let damage = die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8
+            if (d20 + enemyCharacter.dexteritySave >= myCharacter.spellSave) {
+                console.log("He made his save, but he still takes damage!")
+                let finalDamage = Math.floor(damage / 2)
+                console.log("Fireball damage: " + finalDamage)
+                enemyCharacter.hitpoints -= finalDamage
+            } else {
+                console.log("Haha, he only rolled a " + d20 + ", he takes full damage!")
+                let finalDamage = damage
+                console.log("Fireball damage: " + finalDamage)
+                enemyCharacter.hitpoints -= finalDamage
+            }
+        }
+
+        if (enemyCharacter.hitpoints < 1) {
+            console.log(enemyCharacter.name + " down")
+            connection.end()
+        } else {
+            console.log("enemy's HP: " + enemyCharacter.hitpoints)
+            if (enemyCharacter.class === "Barbarian") {
+                barbarianAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+            } else if (enemyCharacter.class === "Fighter") {
+                fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+            } else if (enemyCharacter.class === "Rogue") {
+                rogueAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+            } else if (enemyCharacter.class === "Wizard") {
+                wizardAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+            }
+        }
+    })
+}
+
 function generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, isOffHandAttack, hasUsedSneakAttackThisTurn) {
-    // if (myConditions.paralyzed) {
-    //     savingThrow();
-    // }
     console.log("***************************************************************")
     console.log(myCharacter.name + "'s turn to attack " + enemyCharacter.name)
 
