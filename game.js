@@ -840,19 +840,19 @@ function changeCharacter(whatToEdit, characterName, arrayOfOptions) {
                         connection.end()
                     } else {
                         connection.query("UPDATE characters SET ? WHERE ?",
-                        [
-                            {
-                                name: editItTo
-                            },
-                            {
-                                name: characterName
+                            [
+                                {
+                                    name: editItTo
+                                },
+                                {
+                                    name: characterName
+                                }
+                            ],
+                            function (err, res) {
+                                if (err) throw err;
+                                connection.end()
                             }
-                        ],
-                        function (err, res) {
-                            if (err) throw err;
-                            connection.end()
-                        }
-                    )        
+                        )
                     }
                 }
             )
@@ -916,13 +916,13 @@ function changeCharacter(whatToEdit, characterName, arrayOfOptions) {
                 message: "What would you like to edit the " + whatToEdit + " to?",
                 choices: arrayOfOptions
             }
-        ]).then(function(response) {
+        ]).then(function (response) {
             let editItTo = response.editItTo
             connection.query("UPDATE characters SET " + whatToEdit + " = '" + editItTo + "' WHERE ?",
                 [
                     {
                         name: characterName
-                    }    
+                    }
                 ],
                 function (err, res) {
                     if (err) throw err;
@@ -942,7 +942,7 @@ function editSubrace(characterName, arrayOfOptions) {
             message: "What would you like the new subrace to be?",
             choices: arrayOfOptions
         }
-    ]).then(function(response) {
+    ]).then(function (response) {
         let editItTo = response.editItTo
         connection.query("UPDATE characters SET subrace = '" + editItTo + "' WHERE ?",
             [
@@ -1004,56 +1004,108 @@ function fight() {
             characterArray.push(res[i]);
         }
 
-    inquirer.prompt([
-        {
-            type: "checkbox",
-            name: "characterChoices",
-            message: "Choose two characters to fight each other",
-            choices: characterArray
-        }
-    ]).then(function(response) {
-        if (response.characterChoices.length === 2) {
-            let combatant1 = response.characterChoices[0]
-            let combatant2 = response.characterChoices[1]
-            // get Dexmods, then roll D20s
-            connection.query("SELECT dexterity FROM characters WHERE ?",
-            [
-                {
-                    name: combatant1
-                }
-            ],
-            function(err, res) {
-                let combatant1Dex = res[0].dexterity
-                console.log(combatant1Dex)
-
-                connection.query("SELECT dexterity FROM characters WHERE ?",
-                [
-                    {
-                        name: combatant2
-                    }
-                ],
-                function(err, res) {
-                    let combatant2Dex = res[0].dexterity
-                    console.log(combatant2Dex)
-
-                    let combatant1DexMod = findInitiative(combatant1Dex)
-                    let combatant2DexMod = findInitiative(combatant2Dex)
-
-                    if (rollForInitiative(combatant1, combatant1DexMod, combatant2, combatant2DexMod) === 1) {
-                        console.log(combatant1 + " goes first")
-                    } else {
-                        console.log(combatant2 + " goes first")
-                    }
-                }
-                )
+        inquirer.prompt([
+            {
+                type: "checkbox",
+                name: "characterChoices",
+                message: "Choose two characters to fight each other",
+                choices: characterArray
             }
-            )
-        } else {
-            console.log("Please select two characters")
-            fight()
-        }
+        ]).then(function (response) {
+            if (response.characterChoices.length === 2) {
+                let combatant1 = response.characterChoices[0]
+                let combatant2 = response.characterChoices[1]
+                connection.query("SELECT dexterity FROM characters WHERE ?",
+                    [
+                        {
+                            name: combatant1
+                        }
+                    ],
+                    function (err, res) {
+                        let combatant1Dex = res[0].dexterity
+                        console.log(combatant1Dex)
+
+                        connection.query("SELECT dexterity FROM characters WHERE ?",
+                            [
+                                {
+                                    name: combatant2
+                                }
+                            ],
+                            function (err, res) {
+                                let combatant2Dex = res[0].dexterity
+                                console.log(combatant2Dex)
+
+                                let combatant1DexMod = findInitiative(combatant1Dex)
+                                let combatant2DexMod = findInitiative(combatant2Dex)
+                                let wonInitiative = ""
+                                if (rollForInitiative(combatant1, combatant1DexMod, combatant2, combatant2DexMod) === 1) {
+                                    wonInitiative = combatant1
+                                    console.log(combatant1 + " goes first")
+                                } else {
+                                    wonInitiative = combatant2
+                                    console.log(combatant2 + " goes first")
+                                }
+
+                                connection.query("SELECT * FROM characters WHERE ?",
+                                    [
+                                        {
+                                            name: combatant1
+                                        }
+                                    ],
+                                    function (err, res) {
+                                        let character1 = res[0]
+                                        let character1conditions = {
+                                            hasadvantage: false,
+                                            raging: false,
+                                            physicalresistance: false
+                                        }
+                                        let character2conditions = {
+                                            hasadvantage: false,
+                                            raging: false,
+                                            physicalresistance: false
+                                        }
+                                        connection.query("SELECT * FROM characters WHERE ?",
+                                        [
+                                            {
+                                                name: combatant2
+                                            }
+                                        ],
+                                        function (err, res) {
+                                            let character2 = res[0]
+
+                                            if (wonInitiative === combatant1) {
+                                                if (character1.class === "Barbarian") {
+                                                    barbarianAttack1(character1, character1conditions, character2, character2conditions)
+                                                } else if (character1.class === "Fighter") {
+                                                    fighterAttack1(character1, character1conditions, character2, character2conditions)
+                                                } else if (character1.class === "Rogue") {
+                                                    rogueAttack(character1, character1conditions, character2, character2conditions)
+                                                }
+                                            } else {
+                                                if (character2.class === "Barbarian") {
+                                                    barbarianAttack1(character2, character2conditions, character1, character1conditions)
+                                                } else if (character2.class === "Fighter") {
+                                                    fighterAttack1(character2, character2conditions, character1, character1conditions)
+                                                } else if (character2.class === "Rogue") {
+                                                    rogueAttack(character2, character2conditions, character1, character1conditions)
+                                                }
+                                            }
+                                        }
+                                        )
+                                    }
+                                )
+                            }
+                        )
+                    }
+                )
+            } else {
+                console.log("Please select two characters")
+                fight()
+            }
+        })
     })
-})
+    // barbarianAttack1(character1, character1conditions, character2, character2conditions)
+}
 
 function rollForInitiative(combatant1, combatant1DexMod, combatant2, combatant2DexMod) {
     let combatant1Roll = Math.floor(Math.random() * 20) + 1
@@ -1090,41 +1142,6 @@ function findInitiative(Dex) {
     return Modifier
 }
 
-    // choose two characters to fight
-    // roll for initiative
-
-    // let character1 = {
-    //     name: "Gronk",
-    //     class: "Barbarian",
-    //     level: 1,
-    //     weapon: "Greataxe",
-    //     armorclass: 15,
-    //     hitpoints: 15,
-    //     strength: 16
-    // }
-    // let character1conditions = {
-    //     hasadvantage: false,
-    //     raging: false,
-    //     physicalresistance: false
-    // }
-    // let character2 = {
-    //     name: "Noble",
-    //     class: "Fighter",
-    //     level: 1,
-    //     weapon: "Longsword",
-    //     armorclass: 18,
-    //     hitpoints: 13,
-    //     strength: 16
-    // }
-    // let character2conditions = {
-    //     hasadvantage: false,
-    //     raging: false,
-    //     physicalresistance: false
-    // }
-
-    // barbarianAttack1(character1, character1conditions, character2, character2conditions)
-}
-
 function barbarianAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions) {
     // if (myConditions.paralyzed) {
     //     savingThrow();
@@ -1137,7 +1154,7 @@ function barbarianAttack1(myCharacter, myConditions, enemyCharacter, enemyCondit
                 message: myCharacter.name + " is currently not raging. Bonus action to rage?",
                 choices: ["Yes", "No"]
             }
-        ]).then(function(response) {
+        ]).then(function (response) {
             const goIntoRage = response.goIntoRage
             if (goIntoRage === "Yes") {
                 myConditions.raging = true
@@ -1158,7 +1175,7 @@ function barbarianAttack2(myCharacter, myConditions, enemyCharacter, enemyCondit
             message: "Would you like " + myCharacter.name + " to recklessly attack? If so, you will attack at advantage, but also be attacked at advantage.",
             choices: ["Yes", "No"]
         }
-    ]).then(function(response) {
+    ]).then(function (response) {
         const recklessAttack = response.recklessAttack
         if (recklessAttack === "Yes") {
             myConditions.hasadvantage = true
@@ -1250,7 +1267,7 @@ function barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyCondit
     // Initialize, get, announce proficiency
     let proficiency = convertLevelToProficiency(level)
     console.log("My Level is " + level + ", so my proficiency is " + proficiency)
-    
+
     // Initialize, get, announce primaryStatModifier
     let primaryStatModifier = findPrimaryStatModifier(myCharacter)
     console.log("My primary stat modifier is " + primaryStatModifier)
@@ -1339,7 +1356,7 @@ function barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyCondit
             console.log("enemy's HP: " + enemyCharacter.hitpoints)
             fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
         }
-        
+
     } else {
         console.log("My bonusToHit (" + bonusToHit + ") + my d20 (" + d20 + ") is less than my enemy's AC (" + AC + "), so I miss")
         console.log("enemy's HP: " + enemyCharacter.hitpoints)
@@ -1362,7 +1379,7 @@ function fighterAttack1(myCharacter, myConditions, enemyCharacter, enemyConditio
     // Initialize, get, announce proficiency
     let proficiency = convertLevelToProficiency(level)
     console.log("My Level is " + level + ", so my proficiency is " + proficiency)
-    
+
     // Initialize, get, announce primaryStatModifier
     let primaryStatModifier = findPrimaryStatModifier(myCharacter)
     console.log("My primary stat modifier is " + primaryStatModifier)
@@ -1451,7 +1468,7 @@ function fighterAttack1(myCharacter, myConditions, enemyCharacter, enemyConditio
             console.log("enemy's HP: " + enemyCharacter.hitpoints)
             barbarianAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
         }
-        
+
     } else {
         console.log("My bonusToHit (" + bonusToHit + ") + my d20 (" + d20 + ") is less than my enemy's AC (" + AC + "), so I miss")
         console.log("enemy's HP: " + enemyCharacter.hitpoints)
