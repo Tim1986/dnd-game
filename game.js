@@ -997,35 +997,132 @@ function deleteCharacter() {
 }
 
 function fight() {
+    connection.query("SELECT name FROM characters", function (err, res) {
+        if (err) throw err;
+        const characterArray = [];
+        for (let i = 0; i < res.length; i++) {
+            characterArray.push(res[i]);
+        }
+
+    inquirer.prompt([
+        {
+            type: "checkbox",
+            name: "characterChoices",
+            message: "Choose two characters to fight each other",
+            choices: characterArray
+        }
+    ]).then(function(response) {
+        if (response.characterChoices.length === 2) {
+            let combatant1 = response.characterChoices[0]
+            let combatant2 = response.characterChoices[1]
+            // get Dexmods, then roll D20s
+            connection.query("SELECT dexterity FROM characters WHERE ?",
+            [
+                {
+                    name: combatant1
+                }
+            ],
+            function(err, res) {
+                let combatant1Dex = res[0].dexterity
+                console.log(combatant1Dex)
+
+                connection.query("SELECT dexterity FROM characters WHERE ?",
+                [
+                    {
+                        name: combatant2
+                    }
+                ],
+                function(err, res) {
+                    let combatant2Dex = res[0].dexterity
+                    console.log(combatant2Dex)
+
+                    let combatant1DexMod = findInitiative(combatant1Dex)
+                    let combatant2DexMod = findInitiative(combatant2Dex)
+
+                    if (rollForInitiative(combatant1, combatant1DexMod, combatant2, combatant2DexMod) === 1) {
+                        console.log(combatant1 + " goes first")
+                    } else {
+                        console.log(combatant2 + " goes first")
+                    }
+                }
+                )
+            }
+            )
+        } else {
+            console.log("Please select two characters")
+            fight()
+        }
+    })
+})
+
+function rollForInitiative(combatant1, combatant1DexMod, combatant2, combatant2DexMod) {
+    let combatant1Roll = Math.floor(Math.random() * 20) + 1
+    let combatant2Roll = Math.floor(Math.random() * 20) + 1
+    let combatant1Initiative = combatant1DexMod + combatant1Roll
+    let combatant2Initiative = combatant2DexMod + combatant2Roll
+    console.log(combatant1 + " has a Dex modifier of " + combatant1DexMod + " and a roll of " + combatant1Roll + " for an initiative total of " + combatant1Initiative)
+    console.log(combatant2 + " has a Dex modifier of " + combatant2DexMod + " and a roll of " + combatant2Roll + " for an initiative total of " + combatant2Initiative)
+    if (combatant1Initiative === combatant2Initiative) {
+        console.log("Whoops, they tied for initiative. Let's reroll.")
+        rollForInitiative(combatant1, combatant1DexMod, combatant2, combatant2DexMod)
+    } else if (combatant1Initiative > combatant2Initiative) {
+        return 1
+    } else {
+        return 2
+    }
+}
+function findInitiative(Dex) {
+    if (Dex === 8 || Dex === 9) {
+        Modifier = -1
+    } else if (Dex === 10 || Dex === 11) {
+        Modifier = 0
+    } else if (Dex === 12 || Dex === 13) {
+        Modifier = 1
+    } else if (Dex === 14 || Dex === 15) {
+        Modifier = 2
+    } else if (Dex === 16 || Dex === 17) {
+        Modifier = 3
+    } else if (Dex === 18 || Dex === 19) {
+        Modifier = 4
+    } else if (Dex === 20) {
+        Modifier = 5
+    }
+    return Modifier
+}
+
     // choose two characters to fight
     // roll for initiative
-    let character1 = {
-        name: "Gronk",
-        level: 1,
-        weapon: "Greataxe",
-        armorclass: 15,
-        hitpoints: 15,
-        strength: 16
-    }
-    let character1conditions = {
-        hasadvantage: false,
-        raging: false,
-        physicalresistance: false
-    }
-    let character2 = {
-        name: "Noble",
-        level: 1,
-        weapon: "Longsword",
-        armorclass: 18,
-        hitpoints: 13,
-        strength: 16
-    }
-    let character2conditions = {
-        hasadvantage: false,
-        raging: false,
-        physicalresistance: false
-    }
-    barbarianAttack1(character1, character1conditions, character2, character2conditions)
+
+    // let character1 = {
+    //     name: "Gronk",
+    //     class: "Barbarian",
+    //     level: 1,
+    //     weapon: "Greataxe",
+    //     armorclass: 15,
+    //     hitpoints: 15,
+    //     strength: 16
+    // }
+    // let character1conditions = {
+    //     hasadvantage: false,
+    //     raging: false,
+    //     physicalresistance: false
+    // }
+    // let character2 = {
+    //     name: "Noble",
+    //     class: "Fighter",
+    //     level: 1,
+    //     weapon: "Longsword",
+    //     armorclass: 18,
+    //     hitpoints: 13,
+    //     strength: 16
+    // }
+    // let character2conditions = {
+    //     hasadvantage: false,
+    //     raging: false,
+    //     physicalresistance: false
+    // }
+
+    // barbarianAttack1(character1, character1conditions, character2, character2conditions)
 }
 
 function barbarianAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions) {
@@ -1071,23 +1168,24 @@ function barbarianAttack2(myCharacter, myConditions, enemyCharacter, enemyCondit
     })
 }
 
-function barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyConditions) {
-    let AC = enemyCharacter.armorclass
-    let level = myCharacter.level
-    let proficiency = 2
-    let primaryStatModifier = 0
-    if (level > 4) {
+function convertLevelToProficiency(level) {
+    let proficiency = 0
+    if (level < 5) {
+        proficiency = 2
+    } else if (level > 4) {
         proficiency = 3
-    }
-    if (level > 8) {
+    } else if (level > 8) {
         proficiency = 4
-    }
-    if (level > 12) {
+    } else if (level > 12) {
         proficiency = 5
-    }
-    if (level > 16) {
+    } else if (level > 16) {
         proficiency = 6
     }
+    return proficiency
+}
+
+function findPrimaryStatModifier(myCharacter) {
+    let primaryStatModifier = 0
     if (myCharacter.weapon === "Rapier" || myCharacter.weapon === "Shortswords") {
         if (myCharacter.dexterity === 8 || myCharacter.dexterity === 9) {
             primaryStatModifier = -1
@@ -1117,30 +1215,59 @@ function barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyCondit
             primaryStatModifier = 5
         }
     }
-    let bonusToHit = primaryStatModifier + proficiency
-    console.log("bonusToHit: " + bonusToHit)
-    let d20 = 0
+    return primaryStatModifier
+}
 
+function rollingD20(myConditions) {
+    let d20 = 0
     if (myConditions.hasadvantage === true) {
+        console.log("I have advantage, so I roll twice")
         let die1 = Math.floor(Math.random() * 20) + 1
         let die2 = Math.floor(Math.random() * 20) + 1
+        console.log("I rolled a " + die1 + " and a " + die2)
         if (die1 > die2) {
             d20 = die1
         } else {
             d20 = die2
         }
+        console.log("My d20 is " + d20)
     } else {
+        console.log("I do not have advantage, so I just roll once")
         let die3 = Math.floor(Math.random() * 20) + 1
         d20 = die3
+        console.log("My d20 is " + d20)
     }
+    return d20
+}
+
+function barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyConditions) {
+    console.log("***************************************************************")
+    console.log(myCharacter.name + "'s turn to attack " + enemyCharacter.name)
+    let AC = enemyCharacter.armorclass
+    console.log("Enemy's Armor Class: " + AC)
+    let level = myCharacter.level
+
+    // Initialize, get, announce proficiency
+    let proficiency = convertLevelToProficiency(level)
+    console.log("My Level is " + level + ", so my proficiency is " + proficiency)
+    
+    // Initialize, get, announce primaryStatModifier
+    let primaryStatModifier = findPrimaryStatModifier(myCharacter)
+    console.log("My primary stat modifier is " + primaryStatModifier)
+
+    let bonusToHit = primaryStatModifier + proficiency
+    console.log("My bonusToHit is my primary stat modifier plus my proficiency, which is: " + bonusToHit)
+
+    let d20 = rollingD20(myConditions)
 
     console.log("d20: " + d20)
     console.log("AC: " + AC)
     if (bonusToHit + d20 >= AC) {
-        console.log("hit")
+        console.log("My bonusToHit (" + bonusToHit + ") + my d20 (" + d20 + ") is greater or equal to my enemy's AC (" + AC + "), so I hit")
         let crit = false
         if (d20 === 20) {
             crit = true
+            console.log("Ooh, a crit! That means I get to reroll a weapon die")
         }
         let weaponDamage = 0
         let rageDamage = 0
@@ -1187,36 +1314,149 @@ function barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyCondit
         } else {
             console.log("unrecognized weapon")
         }
-
+        console.log("My weaponDamage is: " + weaponDamage)
         if (myConditions.raging) {
             // not level specific yet
             rageDamage = 2
+            console.log("I'm raging, so I get an additional " + rageDamage + " damage")
         }
-
+        console.log("I add my primary stat modifier to the damage, which is " + primaryStatModifierDamage)
         let damage = weaponDamage + rageDamage + primaryStatModifierDamage
         let finalDamage = 0
         if (enemyConditions.physicalresistance) {
             finalDamage = Math.floor(damage / 2)
+            console.log("My enemy has physical resistance, which cuts my damage in half")
         } else {
             finalDamage = damage
         }
-        console.log("finalDamage: " + finalDamage)
+        console.log("My total damage is " + finalDamage)
+
         enemyCharacter.hitpoints -= finalDamage
         if (enemyCharacter.hitpoints < 1) {
-            console.log("enemy down")
+            console.log(enemyCharacter.name + " down")
+            connection.end()
         } else {
             console.log("enemy's HP: " + enemyCharacter.hitpoints)
+            fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
         }
-        connection.end()
+        
     } else {
-        console.log("missed")
+        console.log("My bonusToHit (" + bonusToHit + ") + my d20 (" + d20 + ") is less than my enemy's AC (" + AC + "), so I miss")
         console.log("enemy's HP: " + enemyCharacter.hitpoints)
-        connection.end()
+        fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
     }
 
 }
 
-function fighterAttack() {
+function fighterAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions) {
+    // if (myConditions.paralyzed) {
+    //     savingThrow();
+    // }
+    console.log("***************************************************************")
+    console.log(myCharacter.name + "'s turn to attack " + enemyCharacter.name)
+
+    let AC = enemyCharacter.armorclass
+    console.log("Enemy's Armor Class: " + AC)
+    let level = myCharacter.level
+
+    // Initialize, get, announce proficiency
+    let proficiency = convertLevelToProficiency(level)
+    console.log("My Level is " + level + ", so my proficiency is " + proficiency)
+    
+    // Initialize, get, announce primaryStatModifier
+    let primaryStatModifier = findPrimaryStatModifier(myCharacter)
+    console.log("My primary stat modifier is " + primaryStatModifier)
+
+    let bonusToHit = primaryStatModifier + proficiency
+    console.log("My bonusToHit is my primary stat modifier plus my proficiency, which is: " + bonusToHit)
+
+    let d20 = rollingD20(myConditions)
+
+    console.log("d20: " + d20)
+    console.log("AC: " + AC)
+    if (bonusToHit + d20 >= AC) {
+        console.log("My bonusToHit (" + bonusToHit + ") + my d20 (" + d20 + ") is greater or equal to my enemy's AC (" + AC + "), so I hit")
+        let crit = false
+        if (d20 === 20) {
+            crit = true
+            console.log("Ooh, a crit! That means I get to reroll a weapon die")
+        }
+        let weaponDamage = 0
+        let rageDamage = 0
+        let primaryStatModifierDamage = primaryStatModifier
+
+        if (myCharacter.weapon === "Longsword" || myCharacter.weapon === "Rapier") {
+            if (crit) {
+                let die1 = Math.floor(Math.random() * 8) + 1
+                let die2 = Math.floor(Math.random() * 8) + 1
+                weaponDamage = die1 + die2
+            } else {
+                let die3 = Math.floor(Math.random() * 8) + 1
+                weaponDamage = die3
+            }
+        } else if (myCharacter.weapon === "Greataxe") {
+            if (crit) {
+                let die1 = Math.floor(Math.random() * 12) + 1
+                let die2 = Math.floor(Math.random() * 12) + 1
+                weaponDamage = die1 + die2
+            } else {
+                let die3 = Math.floor(Math.random() * 12) + 1
+                weaponDamage = die3
+            }
+        } else if (myCharacter.weapon === "Greatsword") {
+            if (crit) {
+                let die1 = Math.floor(Math.random() * 6) + 1
+                let die2 = Math.floor(Math.random() * 6) + 1
+                let die3 = Math.floor(Math.random() * 6) + 1
+                weaponDamage = die1 + die2 + die3
+            } else {
+                let die4 = Math.floor(Math.random() * 6) + 1
+                let die5 = Math.floor(Math.random() * 6) + 1
+                weaponDamage = die4 + die5
+            }
+        } else if (myCharacter.weapon === "Glaive") {
+            if (crit) {
+                let die1 = Math.floor(Math.random() * 10) + 1
+                let die2 = Math.floor(Math.random() * 10) + 1
+                weaponDamage = die1 + die2
+            } else {
+                let die3 = Math.floor(Math.random() * 10) + 1
+                weaponDamage = die3
+            }
+        } else {
+            console.log("unrecognized weapon")
+        }
+        console.log("My weaponDamage is: " + weaponDamage)
+        if (myConditions.raging) {
+            // not level specific yet
+            rageDamage = 2
+            console.log("I'm raging, so I get an additional " + rageDamage + " damage")
+        }
+        console.log("I add my primary stat modifier to the damage, which is " + primaryStatModifierDamage)
+        let damage = weaponDamage + rageDamage + primaryStatModifierDamage
+        let finalDamage = 0
+        if (enemyConditions.physicalresistance) {
+            finalDamage = Math.floor(damage / 2)
+            console.log("My enemy has physical resistance, which cuts my damage in half")
+        } else {
+            finalDamage = damage
+        }
+        console.log("My total damage is " + finalDamage)
+
+        enemyCharacter.hitpoints -= finalDamage
+        if (enemyCharacter.hitpoints < 1) {
+            console.log(enemyCharacter.name + " down")
+            connection.end()
+        } else {
+            console.log("enemy's HP: " + enemyCharacter.hitpoints)
+            barbarianAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        }
+        
+    } else {
+        console.log("My bonusToHit (" + bonusToHit + ") + my d20 (" + d20 + ") is less than my enemy's AC (" + AC + "), so I miss")
+        console.log("enemy's HP: " + enemyCharacter.hitpoints)
+        barbarianAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+    }
 
 }
 
