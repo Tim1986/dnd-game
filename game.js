@@ -858,6 +858,82 @@ function changeCharacter(whatToEdit, characterName, arrayOfOptions) {
             )
 
         })
+    } else if (whatToEdit === "level") {
+        inquirer.prompt([
+            {
+                type: "list",
+                name: "editItTo",
+                message: "What would you like to edit the " + whatToEdit + " to?",
+                choices: arrayOfOptions
+            }
+        ]).then(function (response) {
+            let editItTo = response.editItTo
+            connection.query("UPDATE characters SET " + whatToEdit + " = '" + editItTo + "' WHERE ?",
+                [
+                    {
+                        name: characterName
+                    }
+                ],
+                function (err, res) {
+                    if (err) throw err;
+                    console.log("Updating your level also automatically updates your hitpoints accordingly")
+
+                    connection.query("SELECT class, constitution FROM characters WHERE ?",
+                        [
+                            {
+                                name: characterName
+                            }
+                        ],
+                        function (err, res) {
+                            let characterClass = res[0].class
+                            let characterConstitution = res[0].constitution
+                            let newHP = 0
+                            let conModifier = 0
+                            if (characterConstitution === 8 || characterConstitution === 9) {
+                                conModifier = -1
+                            } else if (characterConstitution === 12 || characterConstitution === 13) {
+                                conModifier = 1
+                            } else if (characterConstitution === 14 || characterConstitution === 15) {
+                                conModifier = 2
+                            } else if (characterConstitution === 16 || characterConstitution === 17) {
+                                conModifier = 3
+                            } else if (characterConstitution === 18 || characterConstitution === 19) {
+                                conModifier = 4
+                            } else if (characterConstitution === 20) {
+                                conModifier = 5
+                            }
+
+                            if (characterClass === "Barbarian") {
+                                let levelOne = 12 + conModifier
+                                let otherLevels = (7 + conModifier) * (editItTo - 1)
+                                newHP = levelOne + otherLevels
+                            } else if (characterClass === "Fighter") {
+                                let levelOne = 10 + conModifier
+                                let otherLevels = (6 + conModifier) * (editItTo - 1)
+                                newHP = levelOne + otherLevels
+                            } else if (characterClass === "Rogue") {
+                                let levelOne = 8 + conModifier
+                                let otherLevels = (5 + conModifier) * (editItTo - 1)
+                                newHP = levelOne + otherLevels
+                            }
+                            console.log(newHP)
+                            connection.query("UPDATE characters SET hitpoints = '" + newHP + "' WHERE ?",
+                                [
+                                    {
+                                        name: characterName
+                                    }
+                                ],
+                                function (err, res) {
+                                    if (err) throw err;
+                                    connection.end()
+                                }
+                            )
+                        }
+                    )
+
+                }
+            )
+        })
     } else if (whatToEdit === "subclass") {
         console.log("Not ready for subclasses")
         connection.end()
@@ -1065,32 +1141,32 @@ function fight() {
                                             physicalresistance: false
                                         }
                                         connection.query("SELECT * FROM characters WHERE ?",
-                                        [
-                                            {
-                                                name: combatant2
-                                            }
-                                        ],
-                                        function (err, res) {
-                                            let character2 = res[0]
+                                            [
+                                                {
+                                                    name: combatant2
+                                                }
+                                            ],
+                                            function (err, res) {
+                                                let character2 = res[0]
 
-                                            if (wonInitiative === combatant1) {
-                                                if (character1.class === "Barbarian") {
-                                                    barbarianAttack1(character1, character1conditions, character2, character2conditions)
-                                                } else if (character1.class === "Fighter") {
-                                                    fighterAttack1(character1, character1conditions, character2, character2conditions)
-                                                } else if (character1.class === "Rogue") {
-                                                    rogueAttack(character1, character1conditions, character2, character2conditions)
-                                                }
-                                            } else {
-                                                if (character2.class === "Barbarian") {
-                                                    barbarianAttack1(character2, character2conditions, character1, character1conditions)
-                                                } else if (character2.class === "Fighter") {
-                                                    fighterAttack1(character2, character2conditions, character1, character1conditions)
-                                                } else if (character2.class === "Rogue") {
-                                                    rogueAttack(character2, character2conditions, character1, character1conditions)
+                                                if (wonInitiative === combatant1) {
+                                                    if (character1.class === "Barbarian") {
+                                                        barbarianAttack1(character1, character1conditions, character2, character2conditions)
+                                                    } else if (character1.class === "Fighter") {
+                                                        fighterAttack1(character1, character1conditions, character2, character2conditions)
+                                                    } else if (character1.class === "Rogue") {
+                                                        rogueAttack1(character1, character1conditions, character2, character2conditions)
+                                                    }
+                                                } else {
+                                                    if (character2.class === "Barbarian") {
+                                                        barbarianAttack1(character2, character2conditions, character1, character1conditions)
+                                                    } else if (character2.class === "Fighter") {
+                                                        fighterAttack1(character2, character2conditions, character1, character1conditions)
+                                                    } else if (character2.class === "Rogue") {
+                                                        rogueAttack1(character2, character2conditions, character1, character1conditions)
+                                                    }
                                                 }
                                             }
-                                        }
                                         )
                                     }
                                 )
@@ -1104,7 +1180,6 @@ function fight() {
             }
         })
     })
-    // barbarianAttack1(character1, character1conditions, character2, character2conditions)
 }
 
 function rollForInitiative(combatant1, combatant1DexMod, combatant2, combatant2DexMod) {
@@ -1258,114 +1333,94 @@ function rollingD20(myConditions) {
 }
 
 function barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyConditions) {
-    console.log("***************************************************************")
-    console.log(myCharacter.name + "'s turn to attack " + enemyCharacter.name)
-    let AC = enemyCharacter.armorclass
-    console.log("Enemy's Armor Class: " + AC)
-    let level = myCharacter.level
-
-    // Initialize, get, announce proficiency
-    let proficiency = convertLevelToProficiency(level)
-    console.log("My Level is " + level + ", so my proficiency is " + proficiency)
-
-    // Initialize, get, announce primaryStatModifier
-    let primaryStatModifier = findPrimaryStatModifier(myCharacter)
-    console.log("My primary stat modifier is " + primaryStatModifier)
-
-    let bonusToHit = primaryStatModifier + proficiency
-    console.log("My bonusToHit is my primary stat modifier plus my proficiency, which is: " + bonusToHit)
-
-    let d20 = rollingD20(myConditions)
-
-    console.log("d20: " + d20)
-    console.log("AC: " + AC)
-    if (bonusToHit + d20 >= AC) {
-        console.log("My bonusToHit (" + bonusToHit + ") + my d20 (" + d20 + ") is greater or equal to my enemy's AC (" + AC + "), so I hit")
-        let crit = false
-        if (d20 === 20) {
-            crit = true
-            console.log("Ooh, a crit! That means I get to reroll a weapon die")
-        }
-        let weaponDamage = 0
-        let rageDamage = 0
-        let primaryStatModifierDamage = primaryStatModifier
-
-        if (myCharacter.weapon === "Longsword" || myCharacter.weapon === "Rapier") {
-            if (crit) {
-                let die1 = Math.floor(Math.random() * 8) + 1
-                let die2 = Math.floor(Math.random() * 8) + 1
-                weaponDamage = die1 + die2
-            } else {
-                let die3 = Math.floor(Math.random() * 8) + 1
-                weaponDamage = die3
-            }
-        } else if (myCharacter.weapon === "Greataxe") {
-            if (crit) {
-                let die1 = Math.floor(Math.random() * 12) + 1
-                let die2 = Math.floor(Math.random() * 12) + 1
-                weaponDamage = die1 + die2
-            } else {
-                let die3 = Math.floor(Math.random() * 12) + 1
-                weaponDamage = die3
-            }
-        } else if (myCharacter.weapon === "Greatsword") {
-            if (crit) {
-                let die1 = Math.floor(Math.random() * 6) + 1
-                let die2 = Math.floor(Math.random() * 6) + 1
-                let die3 = Math.floor(Math.random() * 6) + 1
-                weaponDamage = die1 + die2 + die3
-            } else {
-                let die4 = Math.floor(Math.random() * 6) + 1
-                let die5 = Math.floor(Math.random() * 6) + 1
-                weaponDamage = die4 + die5
-            }
-        } else if (myCharacter.weapon === "Glaive") {
-            if (crit) {
-                let die1 = Math.floor(Math.random() * 10) + 1
-                let die2 = Math.floor(Math.random() * 10) + 1
-                weaponDamage = die1 + die2
-            } else {
-                let die3 = Math.floor(Math.random() * 10) + 1
-                weaponDamage = die3
-            }
-        } else {
-            console.log("unrecognized weapon")
-        }
-        console.log("My weaponDamage is: " + weaponDamage)
-        if (myConditions.raging) {
-            // not level specific yet
-            rageDamage = 2
-            console.log("I'm raging, so I get an additional " + rageDamage + " damage")
-        }
-        console.log("I add my primary stat modifier to the damage, which is " + primaryStatModifierDamage)
-        let damage = weaponDamage + rageDamage + primaryStatModifierDamage
-        let finalDamage = 0
-        if (enemyConditions.physicalresistance) {
-            finalDamage = Math.floor(damage / 2)
-            console.log("My enemy has physical resistance, which cuts my damage in half")
-        } else {
-            finalDamage = damage
-        }
-        console.log("My total damage is " + finalDamage)
-
-        enemyCharacter.hitpoints -= finalDamage
-        if (enemyCharacter.hitpoints < 1) {
-            console.log(enemyCharacter.name + " down")
-            connection.end()
-        } else {
-            console.log("enemy's HP: " + enemyCharacter.hitpoints)
-            fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
-        }
-
-    } else {
-        console.log("My bonusToHit (" + bonusToHit + ") + my d20 (" + d20 + ") is less than my enemy's AC (" + AC + "), so I miss")
-        console.log("enemy's HP: " + enemyCharacter.hitpoints)
-        fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+    let finalDamage = 0
+    let firstAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, false)
+    finalDamage += firstAttackDamage
+    if (myCharacter.level > 4) {
+        let secondAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, false)
+        finalDamage += secondAttackDamage
     }
 
+    enemyCharacter.hitpoints -= finalDamage
+    if (enemyCharacter.hitpoints < 1) {
+        console.log(enemyCharacter.name + " down")
+        connection.end()
+    } else {
+        console.log("enemy's HP: " + enemyCharacter.hitpoints)
+        if (enemyCharacter.class === "Barbarian") {
+            barbarianAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else if (enemyCharacter.class === "Fighter") {
+            fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else if (enemyCharacter.class === "Rogue") {
+            rogueAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        }
+    }
 }
 
 function fighterAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions) {
+    let finalDamage = 0
+    let firstAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, false)
+    finalDamage += firstAttackDamage
+    if (myCharacter.level > 4) {
+        let secondAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, false)
+        finalDamage += secondAttackDamage
+    }
+    if (myCharacter.level > 10) {
+        let thirdAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, false)
+        finalDamage += thirdAttackDamage
+    }
+    if (myCharacter.level === 20) {
+        let fourthAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, false)
+        finalDamage += fourthAttackDamage
+    }
+
+    enemyCharacter.hitpoints -= finalDamage
+    if (enemyCharacter.hitpoints < 1) {
+        console.log(enemyCharacter.name + " down")
+        connection.end()
+    } else {
+        console.log("enemy's HP: " + enemyCharacter.hitpoints)
+        if (enemyCharacter.class === "Barbarian") {
+            barbarianAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else if (enemyCharacter.class === "Fighter") {
+            fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else if (enemyCharacter.class === "Rogue") {
+            rogueAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        }
+    }
+}
+
+function rogueAttack1(myCharacter, myConditions, enemyCharacter, enemyConditions) {
+    let finalDamage = 0
+    let firstAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, false)
+    finalDamage += firstAttackDamage
+    if (myCharacter.weapon === "Shortswords") {
+        if (finalDamage === 0) {
+            let secondAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, true, false)
+            finalDamage += secondAttackDamage
+        } else {
+            let secondAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, true, true)
+            finalDamage += secondAttackDamage
+        }
+    }
+
+    enemyCharacter.hitpoints -= finalDamage
+    if (enemyCharacter.hitpoints < 1) {
+        console.log(enemyCharacter.name + " down")
+        connection.end()
+    } else {
+        console.log("enemy's HP: " + enemyCharacter.hitpoints)
+        if (enemyCharacter.class === "Barbarian") {
+            barbarianAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else if (enemyCharacter.class === "Fighter") {
+            fighterAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        } else if (enemyCharacter.class === "Rogue") {
+            rogueAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        }
+    }
+}
+
+function generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, isOffHandAttack, hasUsedSneakAttackThisTurn) {
     // if (myConditions.paralyzed) {
     //     savingThrow();
     // }
@@ -1400,6 +1455,7 @@ function fighterAttack1(myCharacter, myConditions, enemyCharacter, enemyConditio
         }
         let weaponDamage = 0
         let rageDamage = 0
+        let sneakAttackDamage = 0
         let primaryStatModifierDamage = primaryStatModifier
 
         if (myCharacter.weapon === "Longsword" || myCharacter.weapon === "Rapier") {
@@ -1440,6 +1496,15 @@ function fighterAttack1(myCharacter, myConditions, enemyCharacter, enemyConditio
                 let die3 = Math.floor(Math.random() * 10) + 1
                 weaponDamage = die3
             }
+        } else if (myCharacter.weapon === "Shortswords") {
+            if (crit) {
+                let die1 = Math.floor(Math.random() * 6) + 1
+                let die2 = Math.floor(Math.random() * 6) + 1
+                weaponDamage = die1 + die2
+            } else {
+                let die3 = Math.floor(Math.random() * 6) + 1
+                weaponDamage = die3
+            }
         } else {
             console.log("unrecognized weapon")
         }
@@ -1449,8 +1514,19 @@ function fighterAttack1(myCharacter, myConditions, enemyCharacter, enemyConditio
             rageDamage = 2
             console.log("I'm raging, so I get an additional " + rageDamage + " damage")
         }
-        console.log("I add my primary stat modifier to the damage, which is " + primaryStatModifierDamage)
-        let damage = weaponDamage + rageDamage + primaryStatModifierDamage
+
+        if (myCharacter.class === "Rogue" && (myCharacter.weapon === "Rapier" || myCharacter.weapon === "Shortswords") && !hasUsedSneakAttackThisTurn) {
+            sneakAttackDamage = calculateSneakAttack(myCharacter, crit)
+        }
+
+        let damage = 0
+        if (isOffHandAttack === false) {
+            console.log("I add my primary stat modifier to the damage, which is " + primaryStatModifierDamage)
+            damage = weaponDamage + rageDamage + primaryStatModifierDamage + sneakAttackDamage
+        } else {
+            console.log("This is an offhand attack, so I don't had my primary stat modifier to the damage")
+            damage = weaponDamage + sneakAttackDamage
+        }
         let finalDamage = 0
         if (enemyConditions.physicalresistance) {
             finalDamage = Math.floor(damage / 2)
@@ -1458,25 +1534,241 @@ function fighterAttack1(myCharacter, myConditions, enemyCharacter, enemyConditio
         } else {
             finalDamage = damage
         }
-        console.log("My total damage is " + finalDamage)
-
-        enemyCharacter.hitpoints -= finalDamage
-        if (enemyCharacter.hitpoints < 1) {
-            console.log(enemyCharacter.name + " down")
-            connection.end()
-        } else {
-            console.log("enemy's HP: " + enemyCharacter.hitpoints)
-            barbarianAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
-        }
-
+        console.log("My total damage from this swing is " + finalDamage)
+        return finalDamage
     } else {
         console.log("My bonusToHit (" + bonusToHit + ") + my d20 (" + d20 + ") is less than my enemy's AC (" + AC + "), so I miss")
-        console.log("enemy's HP: " + enemyCharacter.hitpoints)
-        barbarianAttack1(enemyCharacter, enemyConditions, myCharacter, myConditions)
+        return 0
     }
-
 }
 
-function rogueAttack() {
-
+function calculateSneakAttack(myCharacter, crit) {
+    if (myCharacter.level === 1 || myCharacter.level === 2) {
+        if (crit) {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2
+        } else {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1
+        }
+    } else if (myCharacter.level === 3 || myCharacter.level === 4) {
+        if (crit) {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4
+        } else {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2
+        }
+    } else if (myCharacter.level === 5 || myCharacter.level === 6) {
+        if (crit) {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6
+        } else {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3
+        }
+    } else if (myCharacter.level === 7 || myCharacter.level === 8) {
+        if (crit) {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            let die8 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8
+        } else {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4
+        }
+    } else if (myCharacter.level === 9 || myCharacter.level === 10) {
+        if (crit) {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            let die8 = Math.floor(Math.random() * 6) + 1
+            let die9 = Math.floor(Math.random() * 6) + 1
+            let die10 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8 + die9 + die10
+        } else {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5
+        }
+    } else if (myCharacter.level === 11 || myCharacter.level === 12) {
+        if (crit) {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            let die8 = Math.floor(Math.random() * 6) + 1
+            let die9 = Math.floor(Math.random() * 6) + 1
+            let die10 = Math.floor(Math.random() * 6) + 1
+            let die11 = Math.floor(Math.random() * 6) + 1
+            let die12 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8 + die9 + die10 + die11 + die12
+        } else {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6
+        }
+    } else if (myCharacter.level === 13 || myCharacter.level === 14) {
+        if (crit) {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            let die8 = Math.floor(Math.random() * 6) + 1
+            let die9 = Math.floor(Math.random() * 6) + 1
+            let die10 = Math.floor(Math.random() * 6) + 1
+            let die11 = Math.floor(Math.random() * 6) + 1
+            let die12 = Math.floor(Math.random() * 6) + 1
+            let die13 = Math.floor(Math.random() * 6) + 1
+            let die14 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8 + die9 + die10 + die11 + die12 + die13 + die14
+        } else {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6 + die7
+        }
+    } else if (myCharacter.level === 15 || myCharacter.level === 16) {
+        if (crit) {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            let die8 = Math.floor(Math.random() * 6) + 1
+            let die9 = Math.floor(Math.random() * 6) + 1
+            let die10 = Math.floor(Math.random() * 6) + 1
+            let die11 = Math.floor(Math.random() * 6) + 1
+            let die12 = Math.floor(Math.random() * 6) + 1
+            let die13 = Math.floor(Math.random() * 6) + 1
+            let die14 = Math.floor(Math.random() * 6) + 1
+            let die15 = Math.floor(Math.random() * 6) + 1
+            let die16 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8 + die9 + die10 + die11 + die12 + die13 + die14 + die15 + die16
+        } else {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            let die8 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8
+        }
+    } else if (myCharacter.level === 17 || myCharacter.level === 18) {
+        if (crit) {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            let die8 = Math.floor(Math.random() * 6) + 1
+            let die9 = Math.floor(Math.random() * 6) + 1
+            let die10 = Math.floor(Math.random() * 6) + 1
+            let die11 = Math.floor(Math.random() * 6) + 1
+            let die12 = Math.floor(Math.random() * 6) + 1
+            let die13 = Math.floor(Math.random() * 6) + 1
+            let die14 = Math.floor(Math.random() * 6) + 1
+            let die15 = Math.floor(Math.random() * 6) + 1
+            let die16 = Math.floor(Math.random() * 6) + 1
+            let die17 = Math.floor(Math.random() * 6) + 1
+            let die18 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8 + die9 + die10 + die11 + die12 + die13 + die14 + die15 + die16 + die17 + die18
+        } else {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            let die8 = Math.floor(Math.random() * 6) + 1
+            let die9 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8 + die9
+        }
+    } else if (myCharacter.level === 19 || myCharacter.level === 20) {
+        if (crit) {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            let die8 = Math.floor(Math.random() * 6) + 1
+            let die9 = Math.floor(Math.random() * 6) + 1
+            let die10 = Math.floor(Math.random() * 6) + 1
+            let die11 = Math.floor(Math.random() * 6) + 1
+            let die12 = Math.floor(Math.random() * 6) + 1
+            let die13 = Math.floor(Math.random() * 6) + 1
+            let die14 = Math.floor(Math.random() * 6) + 1
+            let die15 = Math.floor(Math.random() * 6) + 1
+            let die16 = Math.floor(Math.random() * 6) + 1
+            let die17 = Math.floor(Math.random() * 6) + 1
+            let die18 = Math.floor(Math.random() * 6) + 1
+            let die19 = Math.floor(Math.random() * 6) + 1
+            let die20 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8 + die9 + die10 + die11 + die12 + die13 + die14 + die15 + die16 + die17 + die18 + die19 + die20
+        } else {
+            let die1 = Math.floor(Math.random() * 6) + 1
+            let die2 = Math.floor(Math.random() * 6) + 1
+            let die3 = Math.floor(Math.random() * 6) + 1
+            let die4 = Math.floor(Math.random() * 6) + 1
+            let die5 = Math.floor(Math.random() * 6) + 1
+            let die6 = Math.floor(Math.random() * 6) + 1
+            let die7 = Math.floor(Math.random() * 6) + 1
+            let die8 = Math.floor(Math.random() * 6) + 1
+            let die9 = Math.floor(Math.random() * 6) + 1
+            let die10 = Math.floor(Math.random() * 6) + 1
+            sneakAttackDamage = die1 + die2 + die3 + die4 + die5 + die6 + die7 + die8 + die9 + die10
+        }
+    }
+    console.log("I'm a Rogue, so I also get to add sneak attack damage: " + sneakAttackDamage)
+    return sneakAttackDamage
 }
