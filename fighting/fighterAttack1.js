@@ -1,5 +1,4 @@
 const barbarianAttack1 = require("/users/Timothy Brahm/Coding Projects/dnd-game/fighting/barbarianAttack1")
-const fighterAttack1 = require("/users/Timothy Brahm/Coding Projects/dnd-game/fighting/fighterAttack1")
 const rogueAttack1 = require("/users/Timothy Brahm/Coding Projects/dnd-game/fighting/rogueAttack1")
 const wizardAttack1 = require("/users/Timothy Brahm/Coding Projects/dnd-game/fighting/wizardAttack1")
 const generalCombat = require("/users/Timothy Brahm/Coding Projects/dnd-game/fighting/generalCombat")

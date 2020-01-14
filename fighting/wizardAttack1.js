@@ -1,7 +1,6 @@
 const barbarianAttack1 = require("/users/Timothy Brahm/Coding Projects/dnd-game/fighting/barbarianAttack1")
 const fighterAttack1 = require("/users/Timothy Brahm/Coding Projects/dnd-game/fighting/fighterAttack1")
 const rogueAttack1 = require("/users/Timothy Brahm/Coding Projects/dnd-game/fighting/rogueAttack1")
-const wizardAttack1 = require("/users/Timothy Brahm/Coding Projects/dnd-game/fighting/wizardAttack1")
 const convertLevelToProficiency = require("/users/Timothy Brahm/Coding Projects/dnd-game/fighting/convertLevelToProficiency")
 const rollingD20 = require("/users/Timothy Brahm/Coding Projects/dnd-game/fighting/rollingD20")
 

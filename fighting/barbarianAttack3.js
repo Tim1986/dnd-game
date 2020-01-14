@@ -12,7 +12,6 @@ function barbarianAttack3(myCharacter, myConditions, enemyCharacter, enemyCondit
         let secondAttackDamage = generalCombat(myCharacter, myConditions, enemyCharacter, enemyConditions, false)
         finalDamage += secondAttackDamage
     }
-
     enemyCharacter.hitpoints -= finalDamage
     if (enemyCharacter.hitpoints < 1) {
         console.log(enemyCharacter.name + " down")
